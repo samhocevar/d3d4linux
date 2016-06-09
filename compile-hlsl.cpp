@@ -74,6 +74,6 @@ int main(int argc, char *argv[])
     if (shader_blob)
         shader_blob->Release();
 
-    printf("Result: %08x\n", (int)ret);
+    printf("Result: 0x%08x\n", (int)ret);
 }
 

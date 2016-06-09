@@ -144,14 +144,14 @@ struct d3d4linux
             in = fdopen(pipe_read[0], "r");
             out = fdopen(pipe_write[1], "w");
 
-            fprintf(out, "s%s%c", pSrcData, '\0');
+            fprintf(out, "s%s%c", (char const *)pSrcData, '\0');
             if (pFileName)
                 fprintf(out, "f%s%c", pFileName, '\0');
             fprintf(out, "m%s%c", pEntrypoint, '\0');
             fprintf(out, "t%s%c", pTarget, '\0');
             fprintf(out, "1%d%c", Flags1, '\0');
             fprintf(out, "2%d%c", Flags2, '\0');
-            fprintf(out, "X\0");
+            fprintf(out, "X");
             fflush(out);
 
             for (bool running = true; running; )
@@ -168,8 +168,6 @@ struct d3d4linux
                         tmp += ch;
                     ret = atoi(tmp.c_str());
                     //fprintf(stderr, "[CLIENT] Got ret = %d\n", ret);
-                    if (ret != 0)
-                        running = false;
                     break;
 
                 case 'l':
@@ -180,6 +178,19 @@ struct d3d4linux
                     for (int i = atoi(tmp.c_str()); i--; )
                         (*ppCode)->m_contents += getc(in);
                     //fprintf(stderr, "[CLIENT] Got %d bytes of bytecode\n", (*ppCode)->GetBufferSize());
+                    break;
+
+                case 'e':
+                    *ppErrorMsgs = new ID3DBlob;
+
+                    while ((ch = getc(in)) > 0)
+                        tmp += ch;
+                    for (int i = atoi(tmp.c_str()); i--; )
+                        (*ppErrorMsgs)->m_contents += getc(in);
+                    //fprintf(stderr, "[CLIENT] Got %d bytes of bytecode\n", (*ppErrorMsgs)->GetBufferSize());
+                    break;
+
+                case 'q':
                     running = false;
                     break;
                 }
