@@ -107,7 +107,20 @@ struct d3d4linux
     {
         FILE *p = popen("wine d3d4linux-server.exe", "w");
         if (!p)
+        {
+            fprintf(stderr, "Error launching d3d4linux-server\n");
             return -1;
+        }
+
+        fprintf(p, "s%s%c", pSrcData, '\0');
+        if (pFileName)
+            fprintf(p, "f%s%c", pFileName, '\0');
+        fprintf(p, "m%s%c", pEntrypoint, '\0');
+        fprintf(p, "t%s%c", pTarget, '\0');
+        fprintf(p, "1%d%c", Flags1, '\0');
+        fprintf(p, "2%d%c", Flags2, '\0');
+        fprintf(p, "X");
+        fflush(p);
 
         pclose(p);
         return -1;

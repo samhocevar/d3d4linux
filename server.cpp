@@ -14,7 +14,7 @@ int main(void)
     pD3DCompile compile = (pD3DCompile)GetProcAddress(lib, "D3DCompile");
 
     std::string shader_source, shader_file, shader_main, shader_type;
-    uint32_t flags = 0;
+    uint32_t flags1 = 0, flags2 = 0;
     HRESULT ret = 0;
 
     bool must_reset = true;
@@ -26,7 +26,7 @@ int main(void)
             shader_source = shader_file = shader_main = shader_type = "";
             shader_blob = error_blob = nullptr;
             must_reset = false;
-            flags = 0;
+            flags1 = flags2 = 0;
             ret = 0;
         }
 
@@ -48,10 +48,16 @@ int main(void)
                 shader_file += ch;
             break;
 
-        case 'F':
+        case '1':
             while ((ch = getchar()))
                 tmp += ch;
-            flags = atoi(tmp.c_str());
+            flags1 = atoi(tmp.c_str());
+            break;
+
+        case '2':
+            while ((ch = getchar()))
+                tmp += ch;
+            flags2 = atoi(tmp.c_str());
             break;
 
         case 'm':
@@ -71,7 +77,7 @@ int main(void)
                           nullptr, /* unimplemented */
                           shader_main.c_str(),
                           shader_type.c_str(),
-                          flags, 0, &shader_blob, &error_blob);
+                          flags1, flags2, &shader_blob, &error_blob);
             fprintf(stdout, "r%d%c", (int)ret, '\0');
             if (shader_blob)
             {
