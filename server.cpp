@@ -19,6 +19,8 @@ int main(void)
 
     bool must_reset = true;
 
+    fprintf(stderr, "[SERVER] Waiting\n");
+
     for (;;)
     {
         if (must_reset)
@@ -78,14 +80,22 @@ int main(void)
                           shader_main.c_str(),
                           shader_type.c_str(),
                           flags1, flags2, &shader_blob, &error_blob);
+            fprintf(stderr, "[SERVER] Result: %08x\n", ret);
             fprintf(stdout, "r%d%c", (int)ret, '\0');
             if (shader_blob)
             {
+                fprintf(stderr, "[SERVER] Sending code\n");
                 fprintf(stdout, "l%d%c", (int)shader_blob->GetBufferSize());
                 fwrite(shader_blob->GetBufferPointer(), (int)shader_blob->GetBufferSize(), 1, stdout);
                 shader_blob->Release();
             }
+            fflush(stdout);
+            fprintf(stderr, "[SERVER] Finished!\n");
+            must_reset = true;
             break;
+
+        case 'q':
+            return 0;
         }
     }
 }

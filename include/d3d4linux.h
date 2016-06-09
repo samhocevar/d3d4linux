@@ -3,6 +3,9 @@
 #include <cstddef> /* for size_t */
 #include <cstdio> /* for FILE */
 
+#include <unistd.h> /* for fork() */
+#include <sys/wait.h> /* for waitpid() */
+
 #include <string> /* for std::string */
 
 /*
@@ -50,21 +53,21 @@ struct D3D_SHADER_MACRO
     char const *Definition;
 };
 
-// FIXME
 struct ID3DInclude
 {
+    // FIXME
 };
 
 struct ID3DBlob
 {
     char const *GetBufferPointer() const
     {
-        return contents.c_str();
+        return m_contents.c_str();
     }
 
     size_t GetBufferSize() const
     {
-        return contents.size();
+        return m_contents.size();
     }
 
     void Release()
@@ -72,7 +75,7 @@ struct ID3DBlob
         delete this;
     }
 
-    std::string contents;
+    std::string m_contents;
 };
 
 typedef long (*pD3DCompile)(void const *pSrcData,
@@ -105,25 +108,90 @@ struct d3d4linux
                         ID3DBlob **ppCode,
                         ID3DBlob **ppErrorMsgs)
     {
-        FILE *p = popen("wine d3d4linux-server.exe", "w");
-        if (!p)
+        FILE *in, *out;
+        int pipe_read[2], pipe_write[2];
+        long ret = -1;
+
+        pipe(pipe_read);
+        pipe(pipe_write);
+
+        pid_t pid = fork();
+        switch (pid)
         {
-            fprintf(stderr, "Error launching d3d4linux-server\n");
-            return -1;
+        case -1:
+            fprintf(stderr, "Error forking d3d4linux-server\n");
+            return ret;
+
+        case 0:
+            dup2(pipe_write[0], STDIN_FILENO);
+            dup2(pipe_read[1], STDOUT_FILENO);
+
+            //close(STDERR_FILENO);
+
+            close(pipe_read[0]);
+            close(pipe_read[1]);
+            close(pipe_write[0]);
+            close(pipe_write[1]);
+
+            static char *const argv[] = { (char *)"wine", (char *)"d3d4linux-server.exe", 0 };
+            execv("/usr/bin/wine", argv);
+            break;
+
+        default:
+            close(pipe_write[0]);
+            close(pipe_read[1]);
+
+            in = fdopen(pipe_read[0], "r");
+            out = fdopen(pipe_write[1], "w");
+
+            fprintf(out, "s%s%c", pSrcData, '\0');
+            if (pFileName)
+                fprintf(out, "f%s%c", pFileName, '\0');
+            fprintf(out, "m%s%c", pEntrypoint, '\0');
+            fprintf(out, "t%s%c", pTarget, '\0');
+            fprintf(out, "1%d%c", Flags1, '\0');
+            fprintf(out, "2%d%c", Flags2, '\0');
+            fprintf(out, "X\0");
+            fflush(out);
+
+            for (bool running = true; running; )
+            {
+                std::string tmp;
+                int ch = getc(in);
+                if (ch < 0)
+                    break;
+
+                switch (ch)
+                {
+                case 'r':
+                    while ((ch = getc(in)) > 0)
+                        tmp += ch;
+                    ret = atoi(tmp.c_str());
+                    //fprintf(stderr, "[CLIENT] Got ret = %d\n", ret);
+                    if (ret != 0)
+                        running = false;
+                    break;
+
+                case 'l':
+                    *ppCode = new ID3DBlob;
+
+                    while ((ch = getc(in)) > 0)
+                        tmp += ch;
+                    for (int i = atoi(tmp.c_str()); i--; )
+                        (*ppCode)->m_contents += getc(in);
+                    //fprintf(stderr, "[CLIENT] Got %d bytes of bytecode\n", (*ppCode)->GetBufferSize());
+                    running = false;
+                    break;
+                }
+            }
+
+            fprintf(out, "q");
+            fflush(out);
         }
 
-        fprintf(p, "s%s%c", pSrcData, '\0');
-        if (pFileName)
-            fprintf(p, "f%s%c", pFileName, '\0');
-        fprintf(p, "m%s%c", pEntrypoint, '\0');
-        fprintf(p, "t%s%c", pTarget, '\0');
-        fprintf(p, "1%d%c", Flags1, '\0');
-        fprintf(p, "2%d%c", Flags2, '\0');
-        fprintf(p, "X");
-        fflush(p);
+        waitpid(pid, nullptr, 0);
 
-        pclose(p);
-        return -1;
+        return ret;
     }
 };
 

@@ -6,10 +6,10 @@ check: all
 
 INCLUDE = include/d3d4linux.h
 
-CXXFLAGS += -g -I./include -std=c++11
+CXXFLAGS += -I./include -std=c++11
 
 d3d4linux-server.exe: server.cpp $(INCLUDE) Makefile
-	x86_64-w64-mingw32-c++ $(CXXFLAGS) $(filter %.cpp, $^) -o $@
+	x86_64-w64-mingw32-c++ $(CXXFLAGS) $(filter %.cpp, $^) -static -o $@
 
 simple: simple.cpp $(INCLUDE) Makefile
 	$(CXX) $(CXXFLAGS) $(filter %.cpp, $^) -o $@
