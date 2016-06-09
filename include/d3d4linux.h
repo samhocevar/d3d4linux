@@ -46,6 +46,11 @@ struct d3d4linux
                         ID3DBlob **ppCode,
                         ID3DBlob **ppErrorMsgs)
     {
+        FILE *p = popen("wine d3d4linux-server.exe", "w");
+        if (!p)
+            return -1;
+
+        pclose(p);
         return 0;
     }
 };
