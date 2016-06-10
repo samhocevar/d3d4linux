@@ -6,6 +6,7 @@
 
 #include <unistd.h> /* for fork() */
 #include <sys/wait.h> /* for waitpid() */
+#include <fcntl.h> /* for O_WRONLY */
 
 #include <string> /* for std::string */
 #include <vector> /* for std::vector */
@@ -17,11 +18,20 @@
 typedef long HRESULT;
 typedef long HMODULE;
 
-#define FAILED(x) ((x) != 0)
+#define S_FALSE ((HRESULT)1)
+#define S_OK ((HRESULT)0)
+
+#define MAKE_HRESULT(x, y, z) ((HRESULT) (((unsigned long)(x)<<31) | ((unsigned long)(y)<<16) | ((unsigned long)(z))) )
+
+#define SUCCEEDED(x) ((HRESULT)(x) == S_OK)
+#define FAILED(x) (!SUCCEEDED(x))
 
 /*
  * Macros that come from D3D
  */
+
+#define D3DERR_INVALIDCALL /* FIXME */
+#define D3DERR_WASSTILLDRAWING /* FIXME */
 
 #define D3DCOMPILE_DEBUG                          0x0001
 #define D3DCOMPILE_SKIP_VALIDATION                0x0002
@@ -35,6 +45,16 @@ typedef long HMODULE;
 #define D3DCOMPILE_OPTIMIZATION_LEVEL1 0x0000
 #define D3DCOMPILE_OPTIMIZATION_LEVEL2 0xc000
 #define D3DCOMPILE_OPTIMIZATION_LEVEL3 0x8000
+
+/*
+ * Macros that come from D3D10
+ */
+
+#define _FACD3D10 0x87
+#define MAKE_D3D10_HRESULT(x) MAKE_HRESULT(1, _FACD3D10, x)
+
+#define D3D10_ERROR_TOO_MANY_UNIQUE_STATE_OBJECTS MAKE_D3D10_HRESULT(1)
+#define D3D10_ERROR_FILE_NOT_FOUND MAKE_D3D10_HRESULT(2)
 
 #define D3D10_SHADER_DEBUG                          0x0001
 #define D3D10_SHADER_SKIP_VALIDATION                0x0002
@@ -113,13 +133,16 @@ struct d3d4linux
         switch (pid)
         {
         case -1:
-            fprintf(stderr, "Error forking d3d4linux-server\n");
-            return ret;
+            static char const *error_msg = "Error forking d3d4linux-server";
+            createblob(strlen(error_msg), ppErrorMsgs);
+            memcpy((*ppErrorMsgs)->GetBufferPointer(), error_msg, (*ppErrorMsgs)->GetBufferSize());
+            return D3D10_ERROR_FILE_NOT_FOUND;
 
         case 0:
             dup2(pipe_write[0], STDIN_FILENO);
             dup2(pipe_read[1], STDOUT_FILENO);
 
+            dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
             //close(STDERR_FILENO);
 
             close(pipe_read[0]);
@@ -134,18 +157,14 @@ struct d3d4linux
         default:
             close(pipe_write[0]);
             close(pipe_read[1]);
-
             in = fdopen(pipe_read[0], "r");
             out = fdopen(pipe_write[1], "w");
 
             fprintf(out, "s%s%c", (char const *)pSrcData, '\0');
             if (pFileName)
                 fprintf(out, "f%s%c", pFileName, '\0');
-            fprintf(out, "m%s%c", pEntrypoint, '\0');
-            fprintf(out, "t%s%c", pTarget, '\0');
-            fprintf(out, "1%d%c", Flags1, '\0');
-            fprintf(out, "2%d%c", Flags2, '\0');
-            fprintf(out, "X");
+            fprintf(out, "m%s%c" "t%s%c" "1%d%c" "2%d%c" "X",
+                    pEntrypoint, '\0', pTarget, '\0', Flags1, '\0', Flags2, '\0');
             fflush(out);
 
             for (bool running = true; running; )
@@ -160,24 +179,21 @@ struct d3d4linux
                 case 'r':
                     while ((ch = getc(in)) > 0)
                         tmp += ch;
-                    ret = atoi(tmp.c_str());
-                    //fprintf(stderr, "[CLIENT] Got ret = %d\n", ret);
+                    ret = atoll(tmp.c_str());
                     break;
 
                 case 'l':
                     while ((ch = getc(in)) > 0)
                         tmp += ch;
-                    createblob(atoi(tmp.c_str()), ppCode);
+                    createblob(atoll(tmp.c_str()), ppCode);
                     fread((*ppCode)->GetBufferPointer(), (*ppCode)->GetBufferSize(), 1, in);
-                    //fprintf(stderr, "[CLIENT] Got %d bytes of bytecode\n", (*ppCode)->GetBufferSize());
                     break;
 
                 case 'e':
                     while ((ch = getc(in)) > 0)
                         tmp += ch;
-                    createblob(atoi(tmp.c_str()), ppErrorMsgs);
+                    createblob(atoll(tmp.c_str()), ppErrorMsgs);
                     fread((*ppErrorMsgs)->GetBufferPointer(), (*ppErrorMsgs)->GetBufferSize(), 1, in);
-                    //fprintf(stderr, "[CLIENT] Got %d bytes of bytecode\n", (*ppErrorMsgs)->GetBufferSize());
                     break;
 
                 case 'q':
@@ -220,7 +236,7 @@ HRESULT D3DCompile(void const *pSrcData,
                               Flags2, ppCode, ppErrorMsgs);
 }
 
-typedef decltype(&D3DCompile) pD3DCompile;
+typedef decltype(&d3d4linux::compile) pD3DCompile;
 
 /*
  * Helper functions for Windows
