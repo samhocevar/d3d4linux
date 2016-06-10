@@ -399,8 +399,8 @@ HRESULT D3DDisassemble(void const *pSrcData,
                        char const *szComments,
                        ID3DBlob **ppDisassembly)
 {
-    /* FIXME: implement me */
-    return E_FAIL;
+    return d3d4linux::disassemble(pSrcData, SrcDataSize, Flags,
+                                  szComments, ppDisassembly);
 }
 
 static inline
@@ -409,8 +409,7 @@ HRESULT D3DReflect(void const *pSrcData,
                    REFIID pInterface,
                    void **ppReflector)
 {
-    /* FIXME: implement me */
-    return E_FAIL;
+    return d3d4linux::reflect(pSrcData, SrcDataSize, pInterface, ppReflector);
 }
 
 static inline
@@ -419,8 +418,8 @@ HRESULT D3DStripShader(void const *pShaderBytecode,
                        uint32_t uStripFlags,
                        ID3DBlob **ppStrippedBlob)
 {
-    /* FIXME: implement me */
-    return E_FAIL;
+    return d3d4linux::strip_shader(pShaderBytecode, BytecodeLength,
+                                   uStripFlags, ppStrippedBlob);
 }
 
 typedef decltype(&d3d4linux::compile) pD3DCompile;
@@ -451,9 +450,9 @@ static void *GetProcAddress(HMODULE, char const *name)
     if (!strcmp(name, "D3DCompile"))
         return (void *)&d3d4linux::compile;
     if (!strcmp(name, "D3DDisassemble"))
-        return nullptr; /* FIXME */
+        return (void *)&d3d4linux::disassemble;
     if (!strcmp(name, "D3DStripShader"))
-        return nullptr; /* FIXME */
+        return (void *)&d3d4linux::strip_shader;
     if (!strcmp(name, "D3DCreateBlob"))
         return (void *)&d3d4linux::create_blob;
     return nullptr;

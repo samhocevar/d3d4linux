@@ -105,6 +105,34 @@ struct d3d4linux
         return ret;
     }
 
+    static HRESULT reflect(void const *pSrcData,
+                           size_t SrcDataSize,
+                           REFIID pInterface,
+                           void **ppReflector)
+    {
+        /* FIXME: implement me */
+        return E_FAIL;
+    }
+
+    static HRESULT strip_shader(void const *pShaderBytecode,
+                                size_t BytecodeLength,
+                                uint32_t uStripFlags,
+                                ID3DBlob **ppStrippedBlob)
+    {
+        /* FIXME: implement me */
+        return E_FAIL;
+    }
+
+    static HRESULT disassemble(void const *pSrcData,
+                               size_t SrcDataSize,
+                               uint32_t Flags,
+                               char const *szComments,
+                               ID3DBlob **ppDisassembly)
+    {
+        /* FIXME: implement me */
+        return E_FAIL;
+    }
+
 private:
     static long read_long(FILE *in)
     {

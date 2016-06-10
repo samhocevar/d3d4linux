@@ -41,42 +41,40 @@ int main(void)
         case 's':
             while ((ch = getchar()))
                 shader_source += ch;
-            fprintf(stderr, "[SERVER] Got %d bytes of source\n", (int)shader_source.size());
             break;
 
         case 'f':
             while ((ch = getchar()))
                 shader_file += ch;
-            fprintf(stderr, "[SERVER] Filename: %s\n", shader_file.c_str());
             break;
 
         case '1':
             while ((ch = getchar()))
                 tmp += ch;
             flags1 = atoi(tmp.c_str());
-            fprintf(stderr, "[SERVER] Flags1: %04x\n", flags1);
             break;
 
         case '2':
             while ((ch = getchar()))
                 tmp += ch;
             flags2 = atoi(tmp.c_str());
-            fprintf(stderr, "[SERVER] Flags2: %04x\n", flags2);
             break;
 
         case 'm':
             while ((ch = getchar()))
                 shader_main += ch;
-            fprintf(stderr, "[SERVER] Entry point: %s\n", shader_main.c_str());
             break;
 
         case 't':
             while ((ch = getchar()))
                 shader_type += ch;
-            fprintf(stderr, "[SERVER] Type: %s\n", shader_type.c_str());
             break;
 
         case 'X':
+            fprintf(stderr, "[SERVER] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x) = ...\n",
+                    (int)shader_source.size(), shader_file.c_str(), shader_main.c_str(), shader_type.c_str(),
+                    flags1, flags2);
+
             ret = compile(shader_source.c_str(), shader_source.size(),
                           shader_file.c_str(),
                           nullptr, /* unimplemented */
@@ -84,18 +82,16 @@ int main(void)
                           shader_main.c_str(),
                           shader_type.c_str(),
                           flags1, flags2, &shader_blob, &error_blob);
-            fprintf(stderr, "[SERVER] Result: 0x%08x\n", (int)ret);
+            fprintf(stderr, "[SERVER]  ... 0x%08x\n", (int)ret);
             fprintf(stdout, "r%d%c", (int)ret, '\0');
             if (shader_blob)
             {
-                fprintf(stderr, "[SERVER] Sending code\n");
                 fprintf(stdout, "l%d%c", (int)shader_blob->GetBufferSize(), '\0');
                 fwrite(shader_blob->GetBufferPointer(), (int)shader_blob->GetBufferSize(), 1, stdout);
                 shader_blob->Release();
             }
             if (error_blob)
             {
-                fprintf(stderr, "[SERVER] Sending error\n");
                 fprintf(stdout, "e%d%c", (int)error_blob->GetBufferSize(), '\0');
                 fwrite(error_blob->GetBufferPointer(), (int)error_blob->GetBufferSize(), 1, stdout);
                 error_blob->Release();
