@@ -40,68 +40,66 @@ struct d3d4linux
         pipe(pipe_write);
 
         pid_t pid = fork();
-        switch (pid)
+        if (pid < 0)
         {
-        case -1:
             static char const *error_msg = "Error forking d3d4linux";
             create_blob(strlen(error_msg), ppErrorMsgs);
             memcpy((*ppErrorMsgs)->GetBufferPointer(), error_msg, (*ppErrorMsgs)->GetBufferSize());
             return D3D10_ERROR_FILE_NOT_FOUND;
-
-        case 0:
+        }
+        else if (pid == 0)
+        {
             dup2(pipe_write[0], STDIN_FILENO);
             dup2(pipe_read[1], STDOUT_FILENO);
-            dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
+            //dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
 
             close(pipe_read[0]);
             close(pipe_read[1]);
             close(pipe_write[0]);
             close(pipe_write[1]);
 
-            static char *const argv[] = { (char *)"wine", (char *)"d3d4linux.exe", 0 };
+            static char *const argv[] = { (char *)"wine", (char *)"/home/sam/d3d4linux/d3d4linux.exe", 0 };
             execv("/usr/bin/wine", argv);
-            break;
-
-        default:
-            close(pipe_write[0]);
-            close(pipe_read[1]);
-            in = fdopen(pipe_read[0], "r");
-            out = fdopen(pipe_write[1], "w");
-
-            fprintf(out, "s%s%c", (char const *)pSrcData, '\0');
-            if (pFileName)
-                fprintf(out, "f%s%c", pFileName, '\0');
-            fprintf(out, "m%s%c" "t%s%c" "1%d%c" "2%d%c" "X",
-                    pEntrypoint, '\0', pTarget, '\0', Flags1, '\0', Flags2, '\0');
-            fflush(out);
-
-            for (bool running = true; running; )
-            {
-                int ch = getc(in);
-                if (ch < 0)
-                    break;
-
-                switch (ch)
-                {
-                case 'r':
-                    ret = read_long(in);
-                    break;
-                case 'l':
-                    *ppCode = read_blob(in);
-                    break;
-                case 'e':
-                    *ppErrorMsgs = read_blob(in);
-                    break;
-                case 'q':
-                    running = false;
-                    break;
-                }
-            }
-
-            fprintf(out, "q");
-            fflush(out);
+            /* Never going past here */
         }
 
+        close(pipe_write[0]);
+        close(pipe_read[1]);
+        in = fdopen(pipe_read[0], "r");
+        out = fdopen(pipe_write[1], "w");
+
+        fprintf(out, "s%s%c", (char const *)pSrcData, '\0');
+        if (pFileName)
+            fprintf(out, "f%s%c", pFileName, '\0');
+        fprintf(out, "m%s%c" "t%s%c" "1%d%c" "2%d%c" "X",
+                pEntrypoint, '\0', pTarget, '\0', Flags1, '\0', Flags2, '\0');
+        fflush(out);
+
+        for (bool running = true; running; )
+        {
+            int ch = getc(in);
+            if (ch < 0)
+                break;
+
+            switch (ch)
+            {
+            case 'r':
+                ret = read_long(in);
+                break;
+            case 'l':
+                *ppCode = read_blob(in);
+                break;
+            case 'e':
+                *ppErrorMsgs = read_blob(in);
+                break;
+            case 'q':
+                running = false;
+                break;
+            }
+        }
+
+        fprintf(out, "q");
+        fflush(out);
         waitpid(pid, nullptr, 0);
 
         return ret;
