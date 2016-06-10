@@ -2,23 +2,25 @@
 #include <cstdint> /* for uint32_t */
 #include <cstddef> /* for size_t */
 #include <cstdio> /* for FILE */
+#include <cstring> /* for strcmp() */
 
 #include <unistd.h> /* for fork() */
 #include <sys/wait.h> /* for waitpid() */
 
 #include <string> /* for std::string */
+#include <vector> /* for std::vector */
 
 /*
  * Types and macros that come from Windows
  */
 
-typedef int HRESULT;
-typedef int HMODULE;
+typedef long HRESULT;
+typedef long HMODULE;
 
 #define FAILED(x) ((x) != 0)
 
 /*
- * Types and macros that mimic some of the ones in D3D
+ * Macros that come from D3D
  */
 
 #define D3DCOMPILE_DEBUG                          0x0001
@@ -47,6 +49,10 @@ typedef int HMODULE;
 #define D3D10_SHADER_OPTIMIZATION_LEVEL2 0xc000
 #define D3D10_SHADER_OPTIMIZATION_LEVEL3 0x8000
 
+/*
+ * Types that come from D3D
+ */
+
 struct D3D_SHADER_MACRO
 {
     char const *Name;
@@ -55,40 +61,21 @@ struct D3D_SHADER_MACRO
 
 struct ID3DInclude
 {
-    // FIXME
+    // FIXME: unimplemented
 };
 
 struct ID3DBlob
 {
-    char const *GetBufferPointer() const
-    {
-        return m_contents.c_str();
-    }
+    ID3DBlob(size_t size) { m_data.resize(size); }
 
-    size_t GetBufferSize() const
-    {
-        return m_contents.size();
-    }
+    void const *GetBufferPointer() const { return m_data.data(); }
+    void *GetBufferPointer() { return m_data.data(); }
+    size_t GetBufferSize() const { return m_data.size(); }
+    void Release() { delete this; }
 
-    void Release()
-    {
-        delete this;
-    }
-
-    std::string m_contents;
+private:
+    std::vector<uint8_t> m_data;
 };
-
-typedef long (*pD3DCompile)(void const *pSrcData,
-                            size_t SrcDataSize,
-                            char const *pFileName,
-                            D3D_SHADER_MACRO const *pDefines,
-                            ID3DInclude *pInclude,
-                            char const *pEntrypoint,
-                            char const *pTarget,
-                            uint32_t Flags1,
-                            uint32_t Flags2,
-                            ID3DBlob **ppCode,
-                            ID3DBlob **ppErrorMsgs);
 
 /*
  * Helper struct for compilation
@@ -96,21 +83,28 @@ typedef long (*pD3DCompile)(void const *pSrcData,
 
 struct d3d4linux
 {
-    static long compile(void const *pSrcData,
-                        size_t SrcDataSize,
-                        char const *pFileName,
-                        D3D_SHADER_MACRO const *pDefines,
-                        ID3DInclude *pInclude,
-                        char const *pEntrypoint,
-                        char const *pTarget,
-                        uint32_t Flags1,
-                        uint32_t Flags2,
-                        ID3DBlob **ppCode,
-                        ID3DBlob **ppErrorMsgs)
+    static HRESULT createblob(size_t Size,
+                              ID3DBlob **ppBlob)
+    {
+        *ppBlob = new ID3DBlob(Size);
+        return 0;
+    }
+
+    static HRESULT compile(void const *pSrcData,
+                           size_t SrcDataSize,
+                           char const *pFileName,
+                           D3D_SHADER_MACRO const *pDefines,
+                           ID3DInclude *pInclude,
+                           char const *pEntrypoint,
+                           char const *pTarget,
+                           uint32_t Flags1,
+                           uint32_t Flags2,
+                           ID3DBlob **ppCode,
+                           ID3DBlob **ppErrorMsgs)
     {
         FILE *in, *out;
         int pipe_read[2], pipe_write[2];
-        long ret = -1;
+        HRESULT ret = -1;
 
         pipe(pipe_read);
         pipe(pipe_write);
@@ -171,22 +165,18 @@ struct d3d4linux
                     break;
 
                 case 'l':
-                    *ppCode = new ID3DBlob;
-
                     while ((ch = getc(in)) > 0)
                         tmp += ch;
-                    for (int i = atoi(tmp.c_str()); i--; )
-                        (*ppCode)->m_contents += getc(in);
+                    createblob(atoi(tmp.c_str()), ppCode);
+                    fread((*ppCode)->GetBufferPointer(), (*ppCode)->GetBufferSize(), 1, in);
                     //fprintf(stderr, "[CLIENT] Got %d bytes of bytecode\n", (*ppCode)->GetBufferSize());
                     break;
 
                 case 'e':
-                    *ppErrorMsgs = new ID3DBlob;
-
                     while ((ch = getc(in)) > 0)
                         tmp += ch;
-                    for (int i = atoi(tmp.c_str()); i--; )
-                        (*ppErrorMsgs)->m_contents += getc(in);
+                    createblob(atoi(tmp.c_str()), ppErrorMsgs);
+                    fread((*ppErrorMsgs)->GetBufferPointer(), (*ppErrorMsgs)->GetBufferSize(), 1, in);
                     //fprintf(stderr, "[CLIENT] Got %d bytes of bytecode\n", (*ppErrorMsgs)->GetBufferSize());
                     break;
 
@@ -207,7 +197,13 @@ struct d3d4linux
 };
 
 static inline
-long D3DCompile(void const *pSrcData,
+HRESULT D3DCreateBlob(size_t Size, ID3DBlob **ppBlob)
+{
+    return d3d4linux::createblob(Size, ppBlob);
+}
+
+static inline
+HRESULT D3DCompile(void const *pSrcData,
                 size_t SrcDataSize,
                 char const *pFileName,
                 D3D_SHADER_MACRO const *pDefines,
@@ -224,6 +220,8 @@ long D3DCompile(void const *pSrcData,
                               Flags2, ppCode, ppErrorMsgs);
 }
 
+typedef decltype(&D3DCompile) pD3DCompile;
+
 /*
  * Helper functions for Windows
  */
@@ -235,6 +233,10 @@ static inline HMODULE LoadLibrary(char const *name)
 
 static void *GetProcAddress(HMODULE, char const *name)
 {
-    return (void *)&d3d4linux::compile;
+    if (!strcmp(name, "D3DCompile"))
+        return (void *)&d3d4linux::compile;
+    if (!strcmp(name, "D3DCreateBlob"))
+        return (void *)&d3d4linux::createblob;
+    return nullptr;
 }
 

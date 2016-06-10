@@ -1,5 +1,7 @@
 
-all: compile-hlsl d3d4linux-server.exe
+BINARIES = compile-hlsl d3d4linux-server.exe
+
+all: $(BINARIES)
 
 check: all
 	./compile-hlsl sample_ps.hlsl ps_main ps_4_0
@@ -13,4 +15,7 @@ d3d4linux-server.exe: server.cpp $(INCLUDE) Makefile
 
 compile-hlsl: compile-hlsl.cpp $(INCLUDE) Makefile
 	$(CXX) $(CXXFLAGS) $(filter %.cpp, $^) -o $@
+
+clean:
+	rm -f $(BINARIES)
 
