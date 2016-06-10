@@ -43,7 +43,7 @@ struct d3d4linux
         switch (pid)
         {
         case -1:
-            static char const *error_msg = "Error forking d3d4linux-server";
+            static char const *error_msg = "Error forking d3d4linux";
             create_blob(strlen(error_msg), ppErrorMsgs);
             memcpy((*ppErrorMsgs)->GetBufferPointer(), error_msg, (*ppErrorMsgs)->GetBufferSize());
             return D3D10_ERROR_FILE_NOT_FOUND;
@@ -58,7 +58,7 @@ struct d3d4linux
             close(pipe_write[0]);
             close(pipe_write[1]);
 
-            static char *const argv[] = { (char *)"wine", (char *)"d3d4linux-server.exe", 0 };
+            static char *const argv[] = { (char *)"wine", (char *)"d3d4linux.exe", 0 };
             execv("/usr/bin/wine", argv);
             break;
 
