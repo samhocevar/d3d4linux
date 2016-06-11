@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <cstdint>
 
+#include <fcntl.h>
+
 static std::string read_string()
 {
     std::string tmp;
@@ -43,6 +45,9 @@ int main(void)
 
     HMODULE lib = LoadLibrary("d3dcompiler_47.dll");
     pD3DCompile compile = (pD3DCompile)GetProcAddress(lib, "D3DCompile");
+
+    /* Ensure stdout is in binary mode */
+    setmode(fileno(stdout), O_BINARY);
 
     int syscall = read_integer();
 
