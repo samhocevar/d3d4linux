@@ -327,7 +327,7 @@ struct ID3D11ShaderReflection
     struct ID3D11ShaderReflectionConstantBuffer *GetConstantBufferByName(char const *name) { return  nullptr; }
 
     void AddRef() { ++m_refcount; }
-    void Release() { if (--m_refcount <= 0) delete this; }
+    void Release() { if (this && --m_refcount <= 0) delete this; }
 
 private:
     int m_refcount;
@@ -355,7 +355,7 @@ struct ID3DBlob
     void *GetBufferPointer() { return m_data.data(); }
     size_t GetBufferSize() const { return m_data.size(); }
     void AddRef() { ++m_refcount; }
-    void Release() { if (--m_refcount <= 0) delete this; }
+    void Release() { if (this && --m_refcount <= 0) delete this; }
 
 private:
     std::vector<uint8_t> m_data;
