@@ -52,6 +52,10 @@ static void write_blob(ID3DBlob *blob)
 
 int main(void)
 {
+    char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
+    if (!verbose_var || *verbose_var != '1')
+        dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
+
     HMODULE lib = LoadLibrary("d3dcompiler_43.dll");
 
     /* Ensure stdout is in binary mode */
@@ -179,6 +183,42 @@ int main(void)
 
         if (strip_blob)
             strip_blob->Release();
+    }
+    else if (syscall == D3D4LINUX_DISASSEMBLE)
+    {
+        HRESULT (*disas)(void const *pSrcData,
+                         size_t SrcDataSize,
+                         uint32_t Flags,
+                         char const *szComments,
+                         ID3DBlob **ppDisassembly);
+        disas = (decltype(disas))GetProcAddress(lib, "D3DDisassemble");
+
+        std::vector<uint8_t> *data = read_data();
+        uint32_t flags = (uint32_t)read_integer();
+        int has_comments = (int)read_integer();
+        std::string comments;
+        if (has_comments)
+            comments = read_string();
+        marker = (int)read_integer();
+        if (marker != D3D4LINUX_FINISHED)
+            goto error;
+
+        fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s <unfinished ...>\n",
+                data ? (int)data->size() : 0, flags, has_comments ? "[comments]" : "(nullptr)");
+        ID3DBlob *disas_blob = nullptr;
+        HRESULT ret = disas(data ? data->data() : nullptr,
+                            data ? data->size() : 0,
+                            flags,
+                            has_comments ? comments.c_str() : nullptr,
+                            &disas_blob);
+        fprintf(stderr, "[D3D4LINUX] < ... D3DDisassemble resumed> ) = 0x%08x\n", (int)ret);
+
+        write_integer(ret);
+        write_blob(disas_blob);
+        write_integer(D3D4LINUX_FINISHED);
+
+        if (disas_blob)
+            disas_blob->Release();
     }
 
     return EXIT_SUCCESS;

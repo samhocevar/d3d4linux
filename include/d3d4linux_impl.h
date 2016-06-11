@@ -77,6 +77,7 @@ struct d3d4linux
         if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
+        fprintf(stderr, "stub! D3DReflect() result is ignored\n");
         return ret;
     }
 
@@ -110,8 +111,25 @@ struct d3d4linux
                                char const *szComments,
                                ID3DBlob **ppDisassembly)
     {
-        /* FIXME: implement me */
-        return E_FAIL;
+        fork_process p;
+        if (p.error())
+            return E_FAIL;
+
+        p.write_long(D3D4LINUX_DISASSEMBLE);
+        p.write_data(pSrcData, SrcDataSize);
+        p.write_long(Flags);
+        p.write_long(szComments ? 1 : 0);
+        p.write_string(szComments ? szComments : "");
+        p.write_long(D3D4LINUX_FINISHED);
+
+        HRESULT ret = p.read_long();
+        ID3DBlob *disassembly_blob = p.read_blob();
+        int end = p.read_long();
+        if (end != D3D4LINUX_FINISHED)
+            return E_FAIL;
+
+        *ppDisassembly = disassembly_blob;
+        return ret;
     }
 
     static HRESULT create_blob(size_t Size,
@@ -139,7 +157,10 @@ private:
             {
                 dup2(m_pipe_write[0], STDIN_FILENO);
                 dup2(m_pipe_read[1], STDOUT_FILENO);
-                //dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
+
+                char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
+                if (!verbose_var || *verbose_var != '1')
+                    dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
 
                 close(m_pipe_read[0]);
                 close(m_pipe_read[1]);

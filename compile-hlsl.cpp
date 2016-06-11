@@ -94,6 +94,21 @@ int main(int argc, char *argv[])
                              &strip_blob);
 
         printf("Result: 0x%08x\n", (int)ret);
+
+        printf("Calling: D3DDisassemble\n");
+
+        ID3DBlob* disas_blob = nullptr;
+        ret = D3DDisassemble(shader_blob->GetBufferPointer(),
+                             shader_blob->GetBufferSize(),
+                             0, "",
+                             &disas_blob);
+
+        if (SUCCEEDED(ret))
+            fwrite(disas_blob->GetBufferPointer(),
+                   disas_blob->GetBufferSize(),
+                   1, stdout);
+
+        printf("Result: 0x%08x\n", (int)ret);
     }
 
     if (shader_blob)

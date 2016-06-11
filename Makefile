@@ -25,7 +25,7 @@ compile-hlsl: compile-hlsl.cpp $(INCLUDE) Makefile
 	$(CXX) $(CXXFLAGS) $(filter %.cpp, $^) -o $@ $(LDFLAGS)
 
 check: all
-	./compile-hlsl sample_ps.hlsl ps_main ps_4_0
+	D3D4LINUX_VERBOSE=1 ./compile-hlsl sample_ps.hlsl ps_main ps_4_0
 
 clean:
 	rm -f $(BINARIES)
