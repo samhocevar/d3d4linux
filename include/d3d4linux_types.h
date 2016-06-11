@@ -82,9 +82,9 @@ struct D3D11_SHADER_DESC
     uint32_t PatchConstantParameters;
     uint32_t cGSInstanceCount;
     uint32_t cControlPoints;
-    //D3D_TESSELLATOR_OUTPUT_PRIMITIVE HSOutputPrimitive;
-    //D3D_TESSELLATOR_PARTITIONING HSPartitioning;
-    //D3D_TESSELLATOR_DOMAIN TessellatorDomain;
+    D3D_TESSELLATOR_OUTPUT_PRIMITIVE HSOutputPrimitive;
+    D3D_TESSELLATOR_PARTITIONING HSPartitioning;
+    D3D_TESSELLATOR_DOMAIN TessellatorDomain;
     uint32_t cBarrierInstructions;
     uint32_t cInterlockedInstructions;
     uint32_t cTextureStoreInstructions;
@@ -92,7 +92,14 @@ struct D3D11_SHADER_DESC
 
 struct D3D11_SHADER_TYPE_DESC
 {
-    // FIXME: unimplemented
+    D3D_SHADER_VARIABLE_CLASS Class;
+    D3D_SHADER_VARIABLE_TYPE Type;
+    uint32_t Rows;
+    uint32_t Columns;
+    uint32_t Elements;
+    uint32_t Members;
+    uint32_t Offset;
+    char const *Name;
 };
 
 struct D3D11_SHADER_VARIABLE_DESC

@@ -53,6 +53,16 @@ static void write_integer(int64_t x)
         fflush(stdout);
 }
 
+static void write_raw(void *data, size_t size)
+{
+    fwrite(data, size, 1, stdout);
+}
+
+static void write_string(char const *s)
+{
+    fwrite(s, strlen(s) + 1, 1, stdout);
+}
+
 static void write_blob(ID3DBlob *blob)
 {
     int size = blob ? (int)blob->GetBufferSize() : -1;
@@ -151,16 +161,82 @@ int main(void)
             goto error;
         }
 
-        void *reflector;
+        void *object;
         HRESULT ret = reflect(data ? data->data() : nullptr,
                               data ? data->size() : 0,
-                              iid, &reflector);
+                              iid, &object);
         fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s) = 0x%08x\n",
                 data ? (int)data->size() : 0, iid_name, (int)ret);
 
-        /* FIXME: this is unimplemented! */
-
         write_integer(ret);
+
+        if (iid_code == D3D4LINUX_IID_SHADER_REFLECTION)
+        {
+            D3D11_SIGNATURE_PARAMETER_DESC param_desc;
+            D3D11_SHADER_INPUT_BIND_DESC bind_desc;
+            D3D11_SHADER_VARIABLE_DESC variable_desc;
+            D3D11_SHADER_BUFFER_DESC buffer_desc;
+            D3D11_SHADER_DESC shader_desc;
+
+            ID3D11ShaderReflection *reflector = (ID3D11ShaderReflection *)object;
+
+            /* Serialise D3D11_SHADER_DESC */
+            reflector->GetDesc(&shader_desc);
+            write_raw(&shader_desc, sizeof(shader_desc));
+            write_string(shader_desc.Creator);
+
+            /* Serialize all InputParameterDesc */
+            for (uint32_t i = 0; i < shader_desc.InputParameters; ++i)
+            {
+                reflector->GetInputParameterDesc(i, &param_desc);
+                write_raw(&param_desc, sizeof(param_desc));
+                write_string(param_desc.SemanticName);
+            }
+
+            /* Serialize all OutParameterDesc */
+            for (uint32_t i = 0; i < shader_desc.OutputParameters; ++i)
+            {
+                reflector->GetOutputParameterDesc(i, &param_desc);
+                write_raw(&param_desc, sizeof(param_desc));
+                write_string(param_desc.SemanticName);
+            }
+
+            /* Serialize all ResourceBindingDesc */
+            for (uint32_t i = 0; i < shader_desc.BoundResources; ++i)
+            {
+                reflector->GetResourceBindingDesc(i, &bind_desc);
+                write_raw(&bind_desc, sizeof(bind_desc));
+                write_string(bind_desc.Name);
+            }
+
+            /* Serialize all ConstantBuffer */
+            for (uint32_t i = 0; i < shader_desc.ConstantBuffers; ++i)
+            {
+                ID3D11ShaderReflectionConstantBuffer *cbuffer
+                        = reflector->GetConstantBufferByIndex(i);
+
+                /* Serialize D3D11_SHADER_BUFFER_DESC */
+                cbuffer->GetDesc(&buffer_desc);
+                write_raw(&buffer_desc, sizeof(buffer_desc));
+                write_string(buffer_desc.Name);
+
+                /* Serialize all Variable */
+                for (uint32_t j = 0; j < buffer_desc.Variables; ++j)
+                {
+                    ID3D11ShaderReflectionVariable *var
+                            = cbuffer->GetVariableByIndex(j);
+
+                    /* Serialize D3D11_SHADER_VARIABLE_DESC */
+                    var->GetDesc(&variable_desc);
+                    write_raw(&variable_desc, sizeof(variable_desc));
+                    write_string(variable_desc.Name);
+                    write_integer(variable_desc.DefaultValue ? 1 : 0);
+                    if (variable_desc.DefaultValue)
+                        write_raw(variable_desc.DefaultValue, variable_desc.Size);
+                }
+            }
+        }
+
         write_integer(D3D4LINUX_FINISHED);
 
         delete data;

@@ -14,8 +14,10 @@
 
 #include <cstdint> /* for uint32_t */
 #include <cstddef> /* for size_t */
+#include <cstring> /* for strcmp */
 
 #include <vector> /* for std::vector */
+#include <string> /* for std::string */
 
 /*
  * Types and macros that come from Windows
@@ -60,36 +62,116 @@ struct ID3DInclude
     // FIXME: unimplemented
 };
 
-struct ID3D11ShaderReflection
+struct ID3D11ShaderReflectionVariable
 {
-    ID3D11ShaderReflection() : m_refcount(1) {}
+    HRESULT GetDesc(D3D11_SHADER_VARIABLE_DESC *desc)
+    {
+        *desc = m_desc;
+        desc->Name = m_strings[0].c_str();
+        desc->DefaultValue = m_has_default ? m_default_value.data() : nullptr;
+        return S_OK;
+    }
 
-    // FIXME: unimplemented
-    HRESULT GetDesc(D3D11_SHADER_DESC *Desc) { return S_OK; }
-    HRESULT GetInputParameterDesc(uint32_t index, D3D11_SIGNATURE_PARAMETER_DESC *desc) { return S_OK; }
-    HRESULT GetOutputParameterDesc(uint32_t index, D3D11_SIGNATURE_PARAMETER_DESC *desc) { return S_OK; }
-    HRESULT GetResourceBindingDesc(uint32_t index, D3D11_SHADER_INPUT_BIND_DESC *desc) { return S_OK; }
-    struct ID3D11ShaderReflectionConstantBuffer *GetConstantBufferByName(char const *name) { return nullptr; }
-
-    void AddRef() { ++m_refcount; }
-    void Release() { if (this && --m_refcount <= 0) delete this; }
-
-private:
-    int m_refcount;
+    D3D11_SHADER_VARIABLE_DESC m_desc;
+    std::vector<std::string> m_strings;
+    int m_has_default;
+    std::vector<uint8_t> m_default_value;
 };
 
 struct ID3D11ShaderReflectionConstantBuffer
 {
-    // FIXME: unimplemented
-    HRESULT GetDesc(D3D11_SHADER_BUFFER_DESC *desc) { return S_OK; }
-    struct ID3D11ShaderReflectionVariable *GetVariableByIndex(uint32_t index) { return nullptr; }
-    struct ID3D11ShaderReflectionVariable *GetVariableByName(char const *name) { return nullptr; }
+    HRESULT GetDesc(D3D11_SHADER_BUFFER_DESC *desc)
+    {
+        *desc = m_desc;
+        desc->Name = m_strings[0].c_str();
+        return S_OK;
+    }
+
+    struct ID3D11ShaderReflectionVariable *GetVariableByIndex(uint32_t index)
+    {
+        return index < m_variables.size() ? &m_variables[index] : nullptr;
+    }
+
+    struct ID3D11ShaderReflectionVariable *GetVariableByName(char const *name)
+    {
+        for (size_t i = 0; i < m_variables.size(); ++i)
+            if (!strcmp(m_variables[i].m_strings[0].c_str(), name))
+                return &m_variables[i];
+
+        return nullptr;
+    }
+
+    D3D11_SHADER_BUFFER_DESC m_desc;
+    std::vector<ID3D11ShaderReflectionVariable> m_variables;
+    std::vector<std::string> m_strings;
 };
 
-struct ID3D11ShaderReflectionVariable
+struct ID3D11ShaderReflection
 {
-    // FIXME: unimplemented
-    HRESULT GetDesc(D3D11_SHADER_VARIABLE_DESC *desc) { return S_OK; }
+    ID3D11ShaderReflection() : m_refcount(1) {}
+
+    HRESULT GetDesc(D3D11_SHADER_DESC *Desc)
+    {
+        *Desc = m_desc;
+        Desc->Creator = m_strings[0].c_str();
+        return S_OK;
+    }
+
+    HRESULT GetInputParameterDesc(uint32_t index, D3D11_SIGNATURE_PARAMETER_DESC *desc)
+    {
+        if (index >= m_input_params.size())
+            return E_FAIL;
+
+        *desc = m_input_params[index];
+        desc->SemanticName = m_strings[1 + index].c_str();
+        return S_OK;
+    }
+
+    HRESULT GetOutputParameterDesc(uint32_t index, D3D11_SIGNATURE_PARAMETER_DESC *desc)
+    {
+        if (index >= m_output_params.size())
+            return E_FAIL;
+
+        *desc = m_output_params[index];
+        desc->SemanticName = m_strings[1 + m_input_params.size() + index].c_str();
+        return S_OK;
+    }
+
+    HRESULT GetResourceBindingDesc(uint32_t index, D3D11_SHADER_INPUT_BIND_DESC *desc)
+    {
+        if (index >= m_binds.size())
+            return E_FAIL;
+
+        *desc = m_binds[index];
+        desc->Name = m_strings[1 + m_input_params.size() + m_output_params.size() + index].c_str();
+        return S_OK;
+    }
+
+    struct ID3D11ShaderReflectionConstantBuffer *GetConstantBufferByName(char const *name)
+    {
+        for (size_t i = 0; i < m_buffers.size(); ++i)
+            if (!strcmp(m_buffers[i].m_strings[0].c_str(), name))
+                return &m_buffers[i];
+        return nullptr;
+    }
+
+    struct ID3D11ShaderReflectionConstantBuffer *GetConstantBufferByIndex(uint32_t index)
+    {
+        return index < m_buffers.size() ? &m_buffers[index] : nullptr;
+    }
+
+    void AddRef() { ++m_refcount; }
+    void Release() { if (this && --m_refcount <= 0) delete this; }
+
+    D3D11_SHADER_DESC m_desc;
+    std::vector<D3D11_SIGNATURE_PARAMETER_DESC> m_input_params;
+    std::vector<D3D11_SIGNATURE_PARAMETER_DESC> m_output_params;
+    std::vector<D3D11_SHADER_INPUT_BIND_DESC> m_binds;
+    std::vector<ID3D11ShaderReflectionConstantBuffer> m_buffers;
+    std::vector<std::string> m_strings;
+
+private:
+    int m_refcount;
 };
 
 struct ID3DBlob

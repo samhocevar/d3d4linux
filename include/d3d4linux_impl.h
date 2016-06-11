@@ -85,11 +85,60 @@ struct d3d4linux
         p.write_long(D3D4LINUX_FINISHED);
 
         HRESULT ret = p.read_long();
+
+        if (pInterface == IID_ID3D11ShaderReflection)
+        {
+            ID3D11ShaderReflection *r = new ID3D11ShaderReflection;
+
+            p.read_raw(&r->m_desc, sizeof(r->m_desc));
+            r->m_strings.push_back(p.read_string());
+
+            for (uint32_t i = 0; i < r->m_desc.InputParameters; ++i)
+            {
+                r->m_input_params.push_back(D3D11_SIGNATURE_PARAMETER_DESC());
+                p.read_raw(&r->m_input_params[i], sizeof(r->m_input_params[i]));
+                r->m_strings.push_back(p.read_string());
+            }
+
+            for (uint32_t i = 0; i < r->m_desc.OutputParameters; ++i)
+            {
+                r->m_output_params.push_back(D3D11_SIGNATURE_PARAMETER_DESC());
+                p.read_raw(&r->m_output_params[i], sizeof(r->m_output_params[i]));
+                r->m_strings.push_back(p.read_string());
+            }
+
+            for (uint32_t i = 0; i < r->m_desc.BoundResources; ++i)
+            {
+                r->m_binds.push_back(D3D11_SHADER_INPUT_BIND_DESC());
+                p.read_raw(&r->m_binds[i], sizeof(r->m_binds[i]));
+                r->m_strings.push_back(p.read_string());
+            }
+
+            for (uint32_t i = 0; i < r->m_desc.ConstantBuffers; ++i)
+            {
+                r->m_buffers.push_back(ID3D11ShaderReflectionConstantBuffer());
+                p.read_raw(&r->m_buffers[i].m_desc, sizeof(r->m_buffers[i].m_desc));
+                r->m_buffers[i].m_strings.push_back(p.read_string());
+
+                for (uint32_t j = 0; j < r->m_buffers[i].m_desc.Variables; ++j)
+                {
+                    r->m_buffers[i].m_variables.push_back(ID3D11ShaderReflectionVariable());
+                    p.read_raw(&r->m_buffers[i].m_variables[j].m_desc, sizeof(r->m_buffers[i].m_variables[j].m_desc));
+                    r->m_buffers[i].m_variables[j].m_strings.push_back(p.read_string());
+                    r->m_buffers[i].m_variables[j].m_default_value.resize(r->m_buffers[i].m_variables[j].m_desc.Size);
+                    r->m_buffers[i].m_variables[j].m_has_default = p.read_long();
+                    if (r->m_buffers[i].m_variables[j].m_has_default)
+                        p.read_raw(r->m_buffers[i].m_variables[j].m_default_value.data(), r->m_buffers[i].m_variables[j].m_desc.Size);
+                }
+            }
+
+            *ppReflector = r;
+        }
+
         int end = p.read_long();
         if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
-        fprintf(stderr, "!stub!D3DReflect() not fully implemented\n");
         return ret;
     }
 
@@ -239,11 +288,21 @@ private:
 
         long read_long()
         {
+            return atol(read_string().c_str());
+        }
+
+        void read_raw(void *ptr, size_t len)
+        {
+            fread(ptr, len, 1, m_in);
+        }
+
+        std::string read_string()
+        {
             std::string tmp;
             int ch;
             while ((ch = fgetc(m_in)) > 0)
                 tmp += ch;
-            return atol(tmp.c_str());
+            return tmp;
         }
 
         ID3DBlob *read_blob()
