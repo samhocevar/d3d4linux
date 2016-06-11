@@ -52,7 +52,7 @@ static void write_blob(ID3DBlob *blob)
 
 int main(void)
 {
-    HMODULE lib = LoadLibrary("d3dcompiler_47.dll");
+    HMODULE lib = LoadLibrary("d3dcompiler_43.dll");
 
     /* Ensure stdout is in binary mode */
     setmode(fileno(stdout), O_BINARY);
