@@ -63,9 +63,6 @@ struct d3d4linux
                            REFIID pInterface,
                            void **ppReflector)
     {
-        if (pInterface != IID_ID3D11ShaderReflection)
-            return E_FAIL;
-
         fork_process p;
         if (p.error())
             return E_FAIL;
@@ -76,8 +73,8 @@ struct d3d4linux
         p.write_long(D3D4LINUX_FINISHED);
 
         HRESULT ret = p.read_long();
-
-        if (p.read_long() != D3D4LINUX_FINISHED)
+        int end = p.read_long();
+        if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
         return ret;

@@ -12,10 +12,10 @@ INCLUDE = include/d3d4linux.h \
 CXXFLAGS += -Wall -I./include -std=c++11
 
 d3d4linux.exe: d3d4linux.cpp $(INCLUDE) Makefile
-	x86_64-w64-mingw32-c++ $(CXXFLAGS) $(filter %.cpp, $^) -static -o $@
+	x86_64-w64-mingw32-c++ $(CXXFLAGS) $(filter %.cpp, $^) -static -o $@ -ldxguid
 
 compile-hlsl: compile-hlsl.cpp $(INCLUDE) Makefile
-	$(CXX) $(CXXFLAGS) $(filter %.cpp, $^) -o $@
+	$(CXX) -g $(CXXFLAGS) $(filter %.cpp, $^) -o $@
 
 clean:
 	rm -f $(BINARIES)

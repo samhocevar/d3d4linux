@@ -47,6 +47,8 @@ int main(int argc, char *argv[])
                    | D3DCOMPILE_PACK_MATRIX_ROW_MAJOR,
                   0, &shader_blob, &error_blob);
 
+    printf("Result: 0x%08x\n", (int)ret);
+
     if (FAILED(ret))
     {
         if (error_blob)
@@ -69,13 +71,18 @@ int main(int argc, char *argv[])
                 printf("\\x%02x", buf[i]);
         }
         printf("\n");
+
+        pD3DReflect reflect = (pD3DReflect)GetProcAddress(lib, "D3DReflect");
+        ID3D11ShaderReflection *reflector = nullptr;
+        ret = reflect(shader_blob->GetBufferPointer(),
+                      shader_blob->GetBufferSize(),
+                      IID_ID3D11ShaderReflection,
+                      (void **)&reflector);
+
+        printf("Result: 0x%08x\n", (int)ret);
     }
 
     if (shader_blob)
         shader_blob->Release();
-
-    printf("Result: 0x%08x\n", (int)ret);
-
-    pD3DReflect reflect = (pD3DReflect)GetProcAddress(lib, "D3DReflect");
 }
 
