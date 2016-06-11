@@ -2,6 +2,7 @@
 #if __linux__
 #  include "d3d4linux.h"
 #else
+#  include <d3d11.h>
 #  include <d3dcompiler.h>
 #endif
 
@@ -33,8 +34,10 @@ int main(int argc, char *argv[])
     ID3DBlob* shader_blob = nullptr;
     ID3DBlob* error_blob = nullptr;
 
-    HMODULE lib = LoadLibrary("d3dcompiler_47.dll");
+    HMODULE lib = LoadLibrary("d3dcompiler_43.dll");
     pD3DCompile compile = (pD3DCompile)GetProcAddress(lib, "D3DCompile");
+
+    printf("Calling: D3DCompile\n");
 
     ret = compile(source.c_str(), source.size(),
                   file.c_str(),
@@ -72,12 +75,13 @@ int main(int argc, char *argv[])
         }
         printf("\n");
 
-        pD3DReflect reflect = (pD3DReflect)GetProcAddress(lib, "D3DReflect");
+        printf("Calling: D3DReflect\n");
+
         ID3D11ShaderReflection *reflector = nullptr;
-        ret = reflect(shader_blob->GetBufferPointer(),
-                      shader_blob->GetBufferSize(),
-                      IID_ID3D11ShaderReflection,
-                      (void **)&reflector);
+        ret = D3DReflect(shader_blob->GetBufferPointer(),
+                         shader_blob->GetBufferSize(),
+                         IID_ID3D11ShaderReflection,
+                         (void **)&reflector);
 
         printf("Result: 0x%08x\n", (int)ret);
     }
