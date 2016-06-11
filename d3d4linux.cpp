@@ -88,7 +88,7 @@ int main(void)
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
-        fprintf(stderr, "[SERVER] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x <unfinished ...>\n",
+        fprintf(stderr, "[D3D4LINUX] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x <unfinished ...>\n",
                 (int)shader_source.size(), has_filename ? shader_file.c_str() : "(nullptr)", shader_main.c_str(), shader_type.c_str(),
                 flags1, flags2);
         ID3DBlob *shader_blob = nullptr, *error_blob = nullptr;
@@ -99,7 +99,7 @@ int main(void)
                               shader_main.c_str(),
                               shader_type.c_str(),
                               flags1, flags2, &shader_blob, &error_blob);
-        fprintf(stderr, "[SERVER] < ... D3DCompile resumed> ) = 0x%08x\n", (int)ret);
+        fprintf(stderr, "[D3D4LINUX] < ... D3DCompile resumed> ) = 0x%08x\n", (int)ret);
 
         write_integer(ret);
         write_blob(shader_blob);
@@ -137,13 +137,14 @@ int main(void)
             goto error;
         }
 
-        fprintf(stderr, "[SERVER] D3DReflect([%d bytes], %s <unfinished ...>\n",
+        fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s <unfinished ...>\n",
                 data ? (int)data->size() : 0, iid_name);
         void *reflector;
         HRESULT ret = reflect(data ? data->data() : nullptr,
                               data ? data->size() : 0,
                               iid, &reflector);
-        fprintf(stderr, "[SERVER] < ... D3DReflect resumed> ) = 0x%08x\n", (int)ret);
+        fprintf(stderr, "[D3D4LINUX] < ... D3DReflect resumed> ) = 0x%08x\n", (int)ret);
+        fprintf(stderr, "[D3D4LINUX] FIXME: results will be ignored\n");
 
         write_integer(ret);
         write_integer(D3D4LINUX_FINISHED);
@@ -164,13 +165,13 @@ int main(void)
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
-        fprintf(stderr, "[SERVER] D3DStripShader([%d bytes], %04x <unfinished ...>\n",
+        fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x <unfinished ...>\n",
                 data ? (int)data->size() : 0, flags);
         ID3DBlob *strip_blob = nullptr;
         HRESULT ret = strip(data ? data->data() : nullptr,
                             data ? data->size() : 0,
                             flags, &strip_blob);
-        fprintf(stderr, "[SERVER] < ... D3DStripShader resumed> ) = 0x%08x\n", (int)ret);
+        fprintf(stderr, "[D3D4LINUX] < ... D3DStripShader resumed> ) = 0x%08x\n", (int)ret);
 
         write_integer(ret);
         write_blob(strip_blob);
@@ -183,6 +184,6 @@ int main(void)
     return EXIT_SUCCESS;
 
 error:
-    fprintf(stderr, "[SERVER] Bad message received: %08x %08x\n", syscall, marker);
+    fprintf(stderr, "[D3D4LINUX] Bad message received: %08x %08x\n", syscall, marker);
 }
 
