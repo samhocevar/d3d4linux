@@ -75,5 +75,7 @@ int main(int argc, char *argv[])
         shader_blob->Release();
 
     printf("Result: 0x%08x\n", (int)ret);
+
+    pD3DReflect reflect = (pD3DReflect)GetProcAddress(lib, "D3DReflect");
 }
 

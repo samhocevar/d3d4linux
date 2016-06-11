@@ -422,7 +422,14 @@ HRESULT D3DStripShader(void const *pShaderBytecode,
                                    uStripFlags, ppStrippedBlob);
 }
 
+/*
+ * All these types do not necessarily exist in D3D, but they’re convenient
+ */
+
 typedef decltype(&d3d4linux::compile) pD3DCompile;
+typedef decltype(&d3d4linux::disassemble) pD3DDisassemble;
+typedef decltype(&d3d4linux::reflect) pD3DReflect;
+typedef decltype(&d3d4linux::strip_shader) pD3DStripShader;
 
 /*
  * Helper functions for Windows

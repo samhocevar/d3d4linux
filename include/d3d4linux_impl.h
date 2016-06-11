@@ -11,6 +11,8 @@
 
 #include <string> /* for std::string */
 
+#include <d3d4linux_common.h>
+
 struct d3d4linux
 {
     static HRESULT compile(void const *pSrcData,
@@ -25,18 +27,16 @@ struct d3d4linux
                            ID3DBlob **ppCode,
                            ID3DBlob **ppErrorMsgs)
     {
-        HRESULT ret;
         fork_process p;
-
         if (p.error())
         {
-            static char const *error_msg = "Error forking d3d4linux";
+            static char const *error_msg = "Cannot fork in d3d4linux::compile()";
             *ppErrorMsgs = new ID3DBlob(strlen(error_msg));
             memcpy((*ppErrorMsgs)->GetBufferPointer(), error_msg, (*ppErrorMsgs)->GetBufferSize());
-            return D3D10_ERROR_FILE_NOT_FOUND;
+            return E_FAIL;
         }
 
-        p.write_long(1);
+        p.write_long(D3D4LINUX_COMPILE);
         p.write_string((char const *)pSrcData);
         p.write_long(pFileName ? 1 : 0);
         p.write_string(pFileName ? pFileName : "");
@@ -44,11 +44,17 @@ struct d3d4linux
         p.write_string(pTarget);
         p.write_long(Flags1);
         p.write_long(Flags2);
+        p.write_long(D3D4LINUX_FINISHED);
 
-        ret = p.read_long();
-        *ppCode = p.read_blob();
-        *ppErrorMsgs = p.read_blob();
+        HRESULT ret = p.read_long();
+        ID3DBlob *code_blob = p.read_blob();
+        ID3DBlob *error_blob = p.read_blob();
+        int end = p.read_long();
+        if (end != D3D4LINUX_FINISHED)
+            return E_FAIL;
 
+        *ppCode = code_blob;
+        *ppErrorMsgs = error_blob;
         return ret;
     }
 
@@ -60,8 +66,21 @@ struct d3d4linux
         if (pInterface != IID_ID3D11ShaderReflection)
             return E_FAIL;
 
-        /* FIXME: implement me */
-        return E_FAIL;
+        fork_process p;
+        if (p.error())
+            return E_FAIL;
+
+        p.write_long(D3D4LINUX_REFLECT);
+        p.write_data(pSrcData, SrcDataSize);
+        p.write_long(pInterface);
+        p.write_long(D3D4LINUX_FINISHED);
+
+        HRESULT ret = p.read_long();
+
+        if (p.read_long() != D3D4LINUX_FINISHED)
+            return E_FAIL;
+
+        return ret;
     }
 
     static HRESULT strip_shader(void const *pShaderBytecode,
@@ -151,20 +170,33 @@ private:
         void write_long(long x)
         {
             fprintf(m_out, "%ld%c", x, '\0');
-            fflush(m_out);
+            if (x == D3D4LINUX_FINISHED)
+                fflush(m_out);
         }
 
         void write_string(char const *s)
         {
             fprintf(m_out, "%s%c", s, '\0');
-            fflush(m_out);
+        }
+
+        void write_data(void const *data, size_t len)
+        {
+            fprintf(m_out, "%ld%c", (long)len, '\0');
+            fwrite(data, len, 1, m_out);
+        }
+
+        void write_blob(ID3DBlob *blob)
+        {
+            write_long(blob ? blob->GetBufferSize() : -1);
+            if (blob)
+                fwrite(blob->GetBufferPointer(), blob->GetBufferSize(), 1, stdout);
         }
 
         long read_long()
         {
             std::string tmp;
             int ch;
-            while ((ch = getc(m_in)) > 0)
+            while ((ch = fgetc(m_in)) > 0)
                 tmp += ch;
             return atol(tmp.c_str());
         }
@@ -185,6 +217,5 @@ private:
         int m_pipe_read[2], m_pipe_write[2];
         pid_t m_pid;
     };
-
 };
 
