@@ -13,13 +13,6 @@
 
 struct d3d4linux
 {
-    static HRESULT create_blob(size_t Size,
-                               ID3DBlob **ppBlob)
-    {
-        *ppBlob = new ID3DBlob(Size);
-        return 0;
-    }
-
     static HRESULT compile(void const *pSrcData,
                            size_t SrcDataSize,
                            char const *pFileName,
@@ -32,75 +25,29 @@ struct d3d4linux
                            ID3DBlob **ppCode,
                            ID3DBlob **ppErrorMsgs)
     {
-        FILE *in, *out;
-        int pipe_read[2], pipe_write[2];
-        HRESULT ret = -1;
+        HRESULT ret;
+        fork_process p;
 
-        pipe(pipe_read);
-        pipe(pipe_write);
-
-        pid_t pid = fork();
-        if (pid < 0)
+        if (p.error())
         {
             static char const *error_msg = "Error forking d3d4linux";
-            create_blob(strlen(error_msg), ppErrorMsgs);
+            *ppErrorMsgs = new ID3DBlob(strlen(error_msg));
             memcpy((*ppErrorMsgs)->GetBufferPointer(), error_msg, (*ppErrorMsgs)->GetBufferSize());
             return D3D10_ERROR_FILE_NOT_FOUND;
         }
-        else if (pid == 0)
-        {
-            dup2(pipe_write[0], STDIN_FILENO);
-            dup2(pipe_read[1], STDOUT_FILENO);
-            //dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
 
-            close(pipe_read[0]);
-            close(pipe_read[1]);
-            close(pipe_write[0]);
-            close(pipe_write[1]);
+        p.write_long(1);
+        p.write_string((char const *)pSrcData);
+        p.write_long(pFileName ? 1 : 0);
+        p.write_string(pFileName ? pFileName : "");
+        p.write_string(pEntrypoint);
+        p.write_string(pTarget);
+        p.write_long(Flags1);
+        p.write_long(Flags2);
 
-            static char *const argv[] = { (char *)"wine", (char *)"/home/sam/d3d4linux/d3d4linux.exe", 0 };
-            execv("/usr/bin/wine", argv);
-            /* Never going past here */
-        }
-
-        close(pipe_write[0]);
-        close(pipe_read[1]);
-        in = fdopen(pipe_read[0], "r");
-        out = fdopen(pipe_write[1], "w");
-
-        fprintf(out, "s%s%c", (char const *)pSrcData, '\0');
-        if (pFileName)
-            fprintf(out, "f%s%c", pFileName, '\0');
-        fprintf(out, "m%s%c" "t%s%c" "1%d%c" "2%d%c" "X",
-                pEntrypoint, '\0', pTarget, '\0', Flags1, '\0', Flags2, '\0');
-        fflush(out);
-
-        for (bool running = true; running; )
-        {
-            int ch = getc(in);
-            if (ch < 0)
-                break;
-
-            switch (ch)
-            {
-            case 'r':
-                ret = read_long(in);
-                break;
-            case 'l':
-                *ppCode = read_blob(in);
-                break;
-            case 'e':
-                *ppErrorMsgs = read_blob(in);
-                break;
-            case 'q':
-                running = false;
-                break;
-            }
-        }
-
-        fprintf(out, "q");
-        fflush(out);
-        waitpid(pid, nullptr, 0);
+        ret = p.read_long();
+        *ppCode = p.read_blob();
+        *ppErrorMsgs = p.read_blob();
 
         return ret;
     }
@@ -110,6 +57,9 @@ struct d3d4linux
                            REFIID pInterface,
                            void **ppReflector)
     {
+        if (pInterface != IID_ID3D11ShaderReflection)
+            return E_FAIL;
+
         /* FIXME: implement me */
         return E_FAIL;
     }
@@ -133,28 +83,108 @@ struct d3d4linux
         return E_FAIL;
     }
 
+    static HRESULT create_blob(size_t Size,
+                               ID3DBlob **ppBlob)
+    {
+        *ppBlob = new ID3DBlob(Size);
+        return S_OK;
+    }
+
 private:
-    static long read_long(FILE *in)
+    struct fork_process
     {
-        std::string tmp;
-        int ch;
-        while ((ch = getc(in)) > 0)
-            tmp += ch;
-        return atol(tmp.c_str());
-    }
+    public:
+        fork_process()
+          : m_in(nullptr),
+            m_out(nullptr),
+            m_pid(-1)
+        {
+            pipe(m_pipe_read);
+            pipe(m_pipe_write);
 
-    static ID3DBlob *read_blob(FILE *in)
-    {
-        ID3DBlob *ret;
-        std::string tmp;
-        int ch;
+            m_pid = fork();
 
-        while ((ch = getc(in)) > 0)
-            tmp += ch;
+            if (m_pid == 0)
+            {
+                dup2(m_pipe_write[0], STDIN_FILENO);
+                dup2(m_pipe_read[1], STDOUT_FILENO);
+                //dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
 
-        create_blob(atoll(tmp.c_str()), &ret);
-        fread(ret->GetBufferPointer(), ret->GetBufferSize(), 1, in);
-        return ret;
-    }
+                close(m_pipe_read[0]);
+                close(m_pipe_read[1]);
+                close(m_pipe_write[0]);
+                close(m_pipe_write[1]);
+
+                static char *const argv[] = { (char *)"wine", (char *)"/home/sam/d3d4linux/d3d4linux.exe", 0 };
+                execv("/usr/bin/wine", argv);
+                /* Never going past here */
+            }
+
+            close(m_pipe_write[0]);
+            close(m_pipe_read[1]);
+
+            if (m_pid < 0)
+                return;
+
+            m_in = fdopen(m_pipe_read[0], "r");
+            m_out = fdopen(m_pipe_write[1], "w");
+        }
+
+        ~fork_process()
+        {
+            if (m_pid > 0)
+            {
+                waitpid(m_pid, nullptr, 0);
+                fclose(m_in);
+                fclose(m_out);
+            }
+
+            close(m_pipe_read[0]);
+            close(m_pipe_write[1]);
+        }
+
+        bool error() const
+        {
+            return m_pid <= 0;
+        }
+
+        void write_long(long x)
+        {
+            fprintf(m_out, "%ld%c", x, '\0');
+            fflush(m_out);
+        }
+
+        void write_string(char const *s)
+        {
+            fprintf(m_out, "%s%c", s, '\0');
+            fflush(m_out);
+        }
+
+        long read_long()
+        {
+            std::string tmp;
+            int ch;
+            while ((ch = getc(m_in)) > 0)
+                tmp += ch;
+            return atol(tmp.c_str());
+        }
+
+        ID3DBlob *read_blob()
+        {
+            int len = read_long();
+            if (len < 0)
+                return nullptr;
+
+            ID3DBlob *blob = new ID3DBlob(len);
+            fread(blob->GetBufferPointer(), len, 1, m_in);
+            return blob;
+        }
+
+    private:
+        FILE *m_in, *m_out;
+        int m_pipe_read[2], m_pipe_write[2];
+        pid_t m_pid;
+    };
+
 };
 
