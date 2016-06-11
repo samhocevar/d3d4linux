@@ -1,4 +1,56 @@
+//
+//  D3D4Linux — access Direct3D DLLs from Linux programs
+//
+//  Copyright © 2016 Sam Hocevar <sam@hocevar.net>
+//
+//  This library is free software. It comes without any warranty, to
+//  the extent permitted by applicable law. You can redistribute it
+//  and/or modify it under the terms of the Do What the Fuck You Want
+//  to Public License, Version 2, as published by the WTFPL Task Force.
+//  See http://www.wtfpl.net/ for more details.
+//
+
 #pragma once
+
+/*
+ * Enums/macros from D3D
+ */
+
+#define D3DCOMPILE_DEBUG                          0x0001
+#define D3DCOMPILE_SKIP_VALIDATION                0x0002
+#define D3DCOMPILE_SKIP_OPTIMIZATION              0x0004
+#define D3DCOMPILE_PACK_MATRIX_ROW_MAJOR          0x0008
+#define D3DCOMPILE_AVOID_FLOW_CONTROL             0x0200
+#define D3DCOMPILE_PREFER_FLOW_CONTROL            0x0400
+#define D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY 0x1000
+
+#define D3DCOMPILE_OPTIMIZATION_LEVEL0 0x4000
+#define D3DCOMPILE_OPTIMIZATION_LEVEL1 0x0000
+#define D3DCOMPILE_OPTIMIZATION_LEVEL2 0xc000
+#define D3DCOMPILE_OPTIMIZATION_LEVEL3 0x8000
+
+/*
+ * Enums/macros from D3D10
+ */
+
+#define _FACD3D10 0x87
+#define MAKE_D3D10_HRESULT(x) MAKE_HRESULT(1, _FACD3D10, x)
+
+#define D3D10_ERROR_TOO_MANY_UNIQUE_STATE_OBJECTS MAKE_D3D10_HRESULT(1)
+#define D3D10_ERROR_FILE_NOT_FOUND MAKE_D3D10_HRESULT(2)
+
+#define D3D10_SHADER_DEBUG                          0x0001
+#define D3D10_SHADER_SKIP_VALIDATION                0x0002
+#define D3D10_SHADER_SKIP_OPTIMIZATION              0x0004
+#define D3D10_SHADER_PACK_MATRIX_ROW_MAJOR          0x0008
+#define D3D10_SHADER_AVOID_FLOW_CONTROL             0x0200
+#define D3D10_SHADER_PREFER_FLOW_CONTROL            0x0400
+#define D3D10_SHADER_ENABLE_BACKWARDS_COMPATIBILITY 0x1000
+
+#define D3D10_SHADER_OPTIMIZATION_LEVEL0 0x4000
+#define D3D10_SHADER_OPTIMIZATION_LEVEL1 0x0000
+#define D3D10_SHADER_OPTIMIZATION_LEVEL2 0xc000
+#define D3D10_SHADER_OPTIMIZATION_LEVEL3 0x8000
 
 typedef enum D3DCOMPILER_STRIP_FLAGS
 {

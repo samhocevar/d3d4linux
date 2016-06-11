@@ -1,3 +1,15 @@
+//
+//  D3D4Linux — access Direct3D DLLs from Linux programs
+//
+//  Copyright © 2016 Sam Hocevar <sam@hocevar.net>
+//
+//  This library is free software. It comes without any warranty, to
+//  the extent permitted by applicable law. You can redistribute it
+//  and/or modify it under the terms of the Do What the Fuck You Want
+//  to Public License, Version 2, as published by the WTFPL Task Force.
+//  See http://www.wtfpl.net/ for more details.
+//
+
 #pragma once
 
 #include <cstdint> /* for uint32_t */
@@ -77,7 +89,7 @@ struct d3d4linux
         if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
-        fprintf(stderr, "stub! D3DReflect() result is ignored\n");
+        fprintf(stderr, "!stub!D3DReflect() not fully implemented\n");
         return ret;
     }
 

@@ -1,3 +1,14 @@
+//
+//  D3D4Linux — access Direct3D DLLs from Linux programs
+//
+//  Copyright © 2016 Sam Hocevar <sam@hocevar.net>
+//
+//  This library is free software. It comes without any warranty, to
+//  the extent permitted by applicable law. You can redistribute it
+//  and/or modify it under the terms of the Do What the Fuck You Want
+//  to Public License, Version 2, as published by the WTFPL Task Force.
+//  See http://www.wtfpl.net/ for more details.
+//
 
 #include <string>
 #include <vector>
@@ -92,9 +103,6 @@ int main(void)
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
-        fprintf(stderr, "[D3D4LINUX] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x <unfinished ...>\n",
-                (int)shader_source.size(), has_filename ? shader_file.c_str() : "(nullptr)", shader_main.c_str(), shader_type.c_str(),
-                flags1, flags2);
         ID3DBlob *shader_blob = nullptr, *error_blob = nullptr;
         HRESULT ret = compile(shader_source.c_str(), shader_source.size(),
                               shader_file.c_str(),
@@ -103,7 +111,9 @@ int main(void)
                               shader_main.c_str(),
                               shader_type.c_str(),
                               flags1, flags2, &shader_blob, &error_blob);
-        fprintf(stderr, "[D3D4LINUX] < ... D3DCompile resumed> ) = 0x%08x\n", (int)ret);
+        fprintf(stderr, "[D3D4LINUX] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x ) = 0x%08x\n",
+                (int)shader_source.size(), has_filename ? shader_file.c_str() : "(nullptr)", shader_main.c_str(), shader_type.c_str(),
+                flags1, flags2, (int)ret);
 
         write_integer(ret);
         write_blob(shader_blob);
@@ -141,14 +151,14 @@ int main(void)
             goto error;
         }
 
-        fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s <unfinished ...>\n",
-                data ? (int)data->size() : 0, iid_name);
         void *reflector;
         HRESULT ret = reflect(data ? data->data() : nullptr,
                               data ? data->size() : 0,
                               iid, &reflector);
-        fprintf(stderr, "[D3D4LINUX] < ... D3DReflect resumed> ) = 0x%08x\n", (int)ret);
-        fprintf(stderr, "[D3D4LINUX] FIXME: results will be ignored\n");
+        fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s) = 0x%08x\n",
+                data ? (int)data->size() : 0, iid_name, (int)ret);
+
+        /* FIXME: this is unimplemented! */
 
         write_integer(ret);
         write_integer(D3D4LINUX_FINISHED);
@@ -169,13 +179,12 @@ int main(void)
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
-        fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x <unfinished ...>\n",
-                data ? (int)data->size() : 0, flags);
         ID3DBlob *strip_blob = nullptr;
         HRESULT ret = strip(data ? data->data() : nullptr,
                             data ? data->size() : 0,
                             flags, &strip_blob);
-        fprintf(stderr, "[D3D4LINUX] < ... D3DStripShader resumed> ) = 0x%08x\n", (int)ret);
+        fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x) = 0x%08x\n",
+                data ? (int)data->size() : 0, flags, (int)ret);
 
         write_integer(ret);
         write_blob(strip_blob);
@@ -203,15 +212,14 @@ int main(void)
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
-        fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s <unfinished ...>\n",
-                data ? (int)data->size() : 0, flags, has_comments ? "[comments]" : "(nullptr)");
         ID3DBlob *disas_blob = nullptr;
         HRESULT ret = disas(data ? data->data() : nullptr,
                             data ? data->size() : 0,
                             flags,
                             has_comments ? comments.c_str() : nullptr,
                             &disas_blob);
-        fprintf(stderr, "[D3D4LINUX] < ... D3DDisassemble resumed> ) = 0x%08x\n", (int)ret);
+        fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s) = 0x%08x\n",
+                data ? (int)data->size() : 0, flags, has_comments ? "[comments]" : "(nullptr)", (int)ret);
 
         write_integer(ret);
         write_blob(disas_blob);
