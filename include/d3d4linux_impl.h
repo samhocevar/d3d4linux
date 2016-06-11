@@ -85,8 +85,23 @@ struct d3d4linux
                                 uint32_t uStripFlags,
                                 ID3DBlob **ppStrippedBlob)
     {
-        /* FIXME: implement me */
-        return E_FAIL;
+        fork_process p;
+        if (p.error())
+            return E_FAIL;
+
+        p.write_long(D3D4LINUX_STRIP);
+        p.write_data(pShaderBytecode, BytecodeLength);
+        p.write_long(uStripFlags);
+        p.write_long(D3D4LINUX_FINISHED);
+
+        HRESULT ret = p.read_long();
+        ID3DBlob *strip_blob = p.read_blob();
+        int end = p.read_long();
+        if (end != D3D4LINUX_FINISHED)
+            return E_FAIL;
+
+        *ppStrippedBlob = strip_blob;
+        return ret;
     }
 
     static HRESULT disassemble(void const *pSrcData,

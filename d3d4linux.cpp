@@ -150,6 +150,35 @@ int main(void)
 
         delete data;
     }
+    else if (syscall == D3D4LINUX_STRIP)
+    {
+        HRESULT (*strip)(void const *pShaderBytecode,
+                         size_t BytecodeLength,
+                         uint32_t uStripFlags,
+                         ID3DBlob **ppStrippedBlob);
+        strip = (decltype(strip))GetProcAddress(lib, "D3DStripShader");
+
+        std::vector<uint8_t> *data = read_data();
+        uint32_t flags = (uint32_t)read_integer();
+        marker = (int)read_integer();
+        if (marker != D3D4LINUX_FINISHED)
+            goto error;
+
+        fprintf(stderr, "[SERVER] D3DStripShader([%d bytes], %04x <unfinished ...>\n",
+                data ? (int)data->size() : 0, flags);
+        ID3DBlob *strip_blob = nullptr;
+        HRESULT ret = strip(data ? data->data() : nullptr,
+                            data ? data->size() : 0,
+                            flags, &strip_blob);
+        fprintf(stderr, "[SERVER] < ... D3DStripShader resumed> ) = 0x%08x\n", (int)ret);
+
+        write_integer(ret);
+        write_blob(strip_blob);
+        write_integer(D3D4LINUX_FINISHED);
+
+        if (strip_blob)
+            strip_blob->Release();
+    }
 
     return EXIT_SUCCESS;
 

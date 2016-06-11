@@ -84,6 +84,16 @@ int main(int argc, char *argv[])
                          (void **)&reflector);
 
         printf("Result: 0x%08x\n", (int)ret);
+
+        printf("Calling: D3DStripShader\n");
+
+        ID3DBlob* strip_blob = nullptr;
+        ret = D3DStripShader(shader_blob->GetBufferPointer(),
+                             shader_blob->GetBufferSize(),
+                             0,
+                             &strip_blob);
+
+        printf("Result: 0x%08x\n", (int)ret);
     }
 
     if (shader_blob)

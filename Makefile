@@ -2,7 +2,10 @@
 BINARIES = compile-hlsl d3d4linux.exe
 
 INCLUDE = include/d3d4linux.h \
-          include/d3d4linux_impl.h
+          include/d3d4linux_common.h \
+          include/d3d4linux_enums.h \
+          include/d3d4linux_impl.h \
+          include/d3d4linux_types.h
 
 CXXFLAGS += -Wall -I./include -std=c++11
 
