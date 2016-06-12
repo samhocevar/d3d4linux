@@ -12,6 +12,9 @@
 
 #pragma once
 
+#include <vector>
+#include <cstdio>
+
 #define D3D4LINUX_FINISHED 0x42000000
 
 #define D3D4LINUX_COMPILE     0x42001000
@@ -21,6 +24,15 @@
 
 #define D3D4LINUX_IID_SHADER_REFLECTION 0x42002000
 
+//
+// Support class for low-level serialization through stdio streams.
+//
+// These functions cannot crash in case of bad data, but they may
+// return garbage.
+// We do not care about endianness (because the guest runs on the same
+// machine) and we do not care about read errors (because the protocol
+// above us does the necessary checks).
+//
 struct interop
 {
     interop(FILE *in, FILE *out)
@@ -39,7 +51,9 @@ struct interop
 
     int64_t read_i64()
     {
-        return atoll(read_string().c_str());
+        int64_t ret;
+        read_raw(&ret, sizeof(ret));
+        return ret;
     }
 
     void read_raw(void *ptr, size_t len)
@@ -60,7 +74,7 @@ struct interop
 
     void write_i64(int64_t x)
     {
-        fprintf(m_out, "%lld%c", (long long int)x, '\0');
+        write_raw(&x, sizeof(x));
         if (x == D3D4LINUX_FINISHED)
             fflush(m_out);
     }
