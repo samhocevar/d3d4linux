@@ -73,7 +73,7 @@ int main(void)
                               shader_main.c_str(),
                               shader_type.c_str(),
                               flags1, flags2, &shader_blob, &error_blob);
-        fprintf(stderr, "[D3D4LINUX] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x ) = 0x%08x\n",
+        fprintf(stderr, "[D3D4LINUX] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x ) = 0x%x\n",
                 (int)shader_source.size(), has_filename ? shader_file.c_str() : "(nullptr)", shader_main.c_str(), shader_type.c_str(),
                 flags1, flags2, (int)ret);
 
@@ -117,7 +117,7 @@ int main(void)
         HRESULT ret = reflect(data ? data->data() : nullptr,
                               data ? data->size() : 0,
                               iid, &object);
-        fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s) = 0x%08x\n",
+        fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s) = 0x%x\n",
                 data ? (int)data->size() : 0, iid_name, (int)ret);
 
         p.write_i64(ret);
@@ -211,7 +211,7 @@ int main(void)
         HRESULT ret = strip(data ? data->data() : nullptr,
                             data ? data->size() : 0,
                             flags, &strip_blob);
-        fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x) = 0x%08x\n",
+        fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x) = 0x%x\n",
                 data ? (int)data->size() : 0, flags, (int)ret);
 
         p.write_i64(ret);
@@ -246,7 +246,7 @@ int main(void)
                             flags,
                             has_comments ? comments.c_str() : nullptr,
                             &disas_blob);
-        fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s) = 0x%08x\n",
+        fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s) = 0x%x\n",
                 data ? (int)data->size() : 0, flags, has_comments ? "[comments]" : "(nullptr)", (int)ret);
 
         p.write_i64(ret);
@@ -260,6 +260,6 @@ int main(void)
     return EXIT_SUCCESS;
 
 error:
-    fprintf(stderr, "[D3D4LINUX] Bad message received: %08x %08x\n", syscall, marker);
+    fprintf(stderr, "[D3D4LINUX] Bad message received: 0x%x 0x%x\n", syscall, marker);
 }
 

@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
                    | D3DCOMPILE_PACK_MATRIX_ROW_MAJOR,
                   0, &shader_blob, &error_blob);
 
-    printf("Result: 0x%08x\n", (int)ret);
+    printf("Result: 0x%x\n", (int)ret);
 
     if (FAILED(ret))
     {
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
                          IID_ID3D11ShaderReflection,
                          (void **)&reflector);
 
-        printf("Result: 0x%08x\n", (int)ret);
+        printf("Result: 0x%x\n", (int)ret);
 
         if (SUCCEEDED(ret))
         {
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
                              0,
                              &strip_blob);
 
-        printf("Result: 0x%08x\n", (int)ret);
+        printf("Result: 0x%x\n", (int)ret);
 
         printf("Calling: D3DDisassemble\n");
 
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
                    disas_blob->GetBufferSize(),
                    1, stdout);
 
-        printf("Result: 0x%08x\n", (int)ret);
+        printf("Result: 0x%x\n", (int)ret);
     }
 
     if (shader_blob)
