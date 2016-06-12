@@ -21,56 +21,6 @@
 
 #include <d3d4linux_common.h>
 
-static std::string read_string()
-{
-    std::string tmp;
-    int ch;
-    while ((ch = getchar()) > 0)
-        tmp += ch;
-    return tmp;
-}
-
-static int64_t read_integer()
-{
-    return atoll(read_string().c_str());
-}
-
-static std::vector<uint8_t> *read_data()
-{
-    size_t len = (size_t)read_integer();
-    if (len < 0)
-        return nullptr;
-    std::vector<uint8_t> *v = new std::vector<uint8_t>();
-    v->resize(len);
-    fread(v->data(), (int)v->size(), 1, stdin);
-    return v;
-}
-
-static void write_integer(int64_t x)
-{
-    fprintf(stdout, "%lld%c", (long long int)x, '\0');
-    if (x == D3D4LINUX_FINISHED)
-        fflush(stdout);
-}
-
-static void write_raw(void *data, size_t size)
-{
-    fwrite(data, size, 1, stdout);
-}
-
-static void write_string(char const *s)
-{
-    fwrite(s, strlen(s) + 1, 1, stdout);
-}
-
-static void write_blob(ID3DBlob *blob)
-{
-    int size = blob ? (int)blob->GetBufferSize() : -1;
-    write_integer(size);
-    if (size > 0)
-        fwrite(blob->GetBufferPointer(), size, 1, stdout);
-}
-
 int main(void)
 {
     char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
@@ -83,7 +33,9 @@ int main(void)
     setmode(fileno(stdout), O_BINARY);
     setmode(fileno(stdin), O_BINARY);
 
-    int syscall = read_integer();
+    interop p(stdin, stdout);
+
+    int syscall = p.read_i64();
     int marker = 0;
 
     if (syscall == D3D4LINUX_COMPILE)
@@ -98,18 +50,18 @@ int main(void)
         compile = (decltype(compile))GetProcAddress(lib, "D3DCompile");
 
         /* This is a D3DCompile() call */
-        std::string shader_source = read_string();
+        std::string shader_source = p.read_string();
 
-        int has_filename = (int)read_integer();
+        int has_filename = (int)p.read_i64();
         std::string shader_file;
         if (has_filename)
-            shader_file = read_string();
+            shader_file = p.read_string();
 
-        std::string shader_main = read_string();
-        std::string shader_type = read_string();
-        uint32_t flags1 = (uint32_t)read_integer();
-        uint32_t flags2 = (uint32_t)read_integer();
-        marker = (int)read_integer();
+        std::string shader_main = p.read_string();
+        std::string shader_type = p.read_string();
+        uint32_t flags1 = (uint32_t)p.read_i64();
+        uint32_t flags2 = (uint32_t)p.read_i64();
+        marker = (int)p.read_i64();
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
@@ -125,10 +77,10 @@ int main(void)
                 (int)shader_source.size(), has_filename ? shader_file.c_str() : "(nullptr)", shader_main.c_str(), shader_type.c_str(),
                 flags1, flags2, (int)ret);
 
-        write_integer(ret);
-        write_blob(shader_blob);
-        write_blob(error_blob);
-        write_integer(D3D4LINUX_FINISHED);
+        p.write_i64(ret);
+        p.write_blob(shader_blob);
+        p.write_blob(error_blob);
+        p.write_i64(D3D4LINUX_FINISHED);
 
         if (shader_blob)
             shader_blob->Release();
@@ -143,9 +95,9 @@ int main(void)
                            void **ppReflector);
         reflect = (decltype(reflect))GetProcAddress(lib, "D3DReflect");
 
-        std::vector<uint8_t> *data = read_data();
-        int iid_code = read_integer();
-        marker = (int)read_integer();
+        std::vector<uint8_t> *data = p.read_data();
+        int iid_code = p.read_i64();
+        marker = (int)p.read_i64();
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
@@ -168,7 +120,7 @@ int main(void)
         fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s) = 0x%08x\n",
                 data ? (int)data->size() : 0, iid_name, (int)ret);
 
-        write_integer(ret);
+        p.write_i64(ret);
 
         if (iid_code == D3D4LINUX_IID_SHADER_REFLECTION)
         {
@@ -182,31 +134,31 @@ int main(void)
 
             /* Serialise D3D11_SHADER_DESC */
             reflector->GetDesc(&shader_desc);
-            write_raw(&shader_desc, sizeof(shader_desc));
-            write_string(shader_desc.Creator);
+            p.write_raw(&shader_desc, sizeof(shader_desc));
+            p.write_string(shader_desc.Creator);
 
             /* Serialize all InputParameterDesc */
             for (uint32_t i = 0; i < shader_desc.InputParameters; ++i)
             {
                 reflector->GetInputParameterDesc(i, &param_desc);
-                write_raw(&param_desc, sizeof(param_desc));
-                write_string(param_desc.SemanticName);
+                p.write_raw(&param_desc, sizeof(param_desc));
+                p.write_string(param_desc.SemanticName);
             }
 
             /* Serialize all OutParameterDesc */
             for (uint32_t i = 0; i < shader_desc.OutputParameters; ++i)
             {
                 reflector->GetOutputParameterDesc(i, &param_desc);
-                write_raw(&param_desc, sizeof(param_desc));
-                write_string(param_desc.SemanticName);
+                p.write_raw(&param_desc, sizeof(param_desc));
+                p.write_string(param_desc.SemanticName);
             }
 
             /* Serialize all ResourceBindingDesc */
             for (uint32_t i = 0; i < shader_desc.BoundResources; ++i)
             {
                 reflector->GetResourceBindingDesc(i, &bind_desc);
-                write_raw(&bind_desc, sizeof(bind_desc));
-                write_string(bind_desc.Name);
+                p.write_raw(&bind_desc, sizeof(bind_desc));
+                p.write_string(bind_desc.Name);
             }
 
             /* Serialize all ConstantBuffer */
@@ -217,8 +169,8 @@ int main(void)
 
                 /* Serialize D3D11_SHADER_BUFFER_DESC */
                 cbuffer->GetDesc(&buffer_desc);
-                write_raw(&buffer_desc, sizeof(buffer_desc));
-                write_string(buffer_desc.Name);
+                p.write_raw(&buffer_desc, sizeof(buffer_desc));
+                p.write_string(buffer_desc.Name);
 
                 /* Serialize all Variable */
                 for (uint32_t j = 0; j < buffer_desc.Variables; ++j)
@@ -228,16 +180,16 @@ int main(void)
 
                     /* Serialize D3D11_SHADER_VARIABLE_DESC */
                     var->GetDesc(&variable_desc);
-                    write_raw(&variable_desc, sizeof(variable_desc));
-                    write_string(variable_desc.Name);
-                    write_integer(variable_desc.DefaultValue ? 1 : 0);
+                    p.write_raw(&variable_desc, sizeof(variable_desc));
+                    p.write_string(variable_desc.Name);
+                    p.write_i64(variable_desc.DefaultValue ? 1 : 0);
                     if (variable_desc.DefaultValue)
-                        write_raw(variable_desc.DefaultValue, variable_desc.Size);
+                        p.write_raw(variable_desc.DefaultValue, variable_desc.Size);
                 }
             }
         }
 
-        write_integer(D3D4LINUX_FINISHED);
+        p.write_i64(D3D4LINUX_FINISHED);
 
         delete data;
     }
@@ -249,9 +201,9 @@ int main(void)
                          ID3DBlob **ppStrippedBlob);
         strip = (decltype(strip))GetProcAddress(lib, "D3DStripShader");
 
-        std::vector<uint8_t> *data = read_data();
-        uint32_t flags = (uint32_t)read_integer();
-        marker = (int)read_integer();
+        std::vector<uint8_t> *data = p.read_data();
+        uint32_t flags = (uint32_t)p.read_i64();
+        marker = (int)p.read_i64();
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
@@ -262,9 +214,9 @@ int main(void)
         fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x) = 0x%08x\n",
                 data ? (int)data->size() : 0, flags, (int)ret);
 
-        write_integer(ret);
-        write_blob(strip_blob);
-        write_integer(D3D4LINUX_FINISHED);
+        p.write_i64(ret);
+        p.write_blob(strip_blob);
+        p.write_i64(D3D4LINUX_FINISHED);
 
         if (strip_blob)
             strip_blob->Release();
@@ -278,13 +230,13 @@ int main(void)
                          ID3DBlob **ppDisassembly);
         disas = (decltype(disas))GetProcAddress(lib, "D3DDisassemble");
 
-        std::vector<uint8_t> *data = read_data();
-        uint32_t flags = (uint32_t)read_integer();
-        int has_comments = (int)read_integer();
+        std::vector<uint8_t> *data = p.read_data();
+        uint32_t flags = (uint32_t)p.read_i64();
+        int has_comments = (int)p.read_i64();
         std::string comments;
         if (has_comments)
-            comments = read_string();
-        marker = (int)read_integer();
+            comments = p.read_string();
+        marker = (int)p.read_i64();
         if (marker != D3D4LINUX_FINISHED)
             goto error;
 
@@ -297,9 +249,9 @@ int main(void)
         fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s) = 0x%08x\n",
                 data ? (int)data->size() : 0, flags, has_comments ? "[comments]" : "(nullptr)", (int)ret);
 
-        write_integer(ret);
-        write_blob(disas_blob);
-        write_integer(D3D4LINUX_FINISHED);
+        p.write_i64(ret);
+        p.write_blob(disas_blob);
+        p.write_i64(D3D4LINUX_FINISHED);
 
         if (disas_blob)
             disas_blob->Release();

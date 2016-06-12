@@ -48,20 +48,20 @@ struct d3d4linux
             return E_FAIL;
         }
 
-        p.write_long(D3D4LINUX_COMPILE);
+        p.write_i64(D3D4LINUX_COMPILE);
         p.write_string((char const *)pSrcData);
-        p.write_long(pFileName ? 1 : 0);
+        p.write_i64(pFileName ? 1 : 0);
         p.write_string(pFileName ? pFileName : "");
         p.write_string(pEntrypoint);
         p.write_string(pTarget);
-        p.write_long(Flags1);
-        p.write_long(Flags2);
-        p.write_long(D3D4LINUX_FINISHED);
+        p.write_i64(Flags1);
+        p.write_i64(Flags2);
+        p.write_i64(D3D4LINUX_FINISHED);
 
-        HRESULT ret = p.read_long();
+        HRESULT ret = p.read_i64();
         ID3DBlob *code_blob = p.read_blob();
         ID3DBlob *error_blob = p.read_blob();
-        int end = p.read_long();
+        int end = p.read_i64();
         if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
@@ -79,12 +79,13 @@ struct d3d4linux
         if (p.error())
             return E_FAIL;
 
-        p.write_long(D3D4LINUX_REFLECT);
-        p.write_data(pSrcData, SrcDataSize);
-        p.write_long(pInterface);
-        p.write_long(D3D4LINUX_FINISHED);
+        p.write_i64(D3D4LINUX_REFLECT);
+        p.write_i64(SrcDataSize);
+        p.write_raw(pSrcData, SrcDataSize);
+        p.write_i64(pInterface);
+        p.write_i64(D3D4LINUX_FINISHED);
 
-        HRESULT ret = p.read_long();
+        HRESULT ret = p.read_i64();
 
         if (pInterface == IID_ID3D11ShaderReflection)
         {
@@ -126,7 +127,7 @@ struct d3d4linux
                     p.read_raw(&r->m_buffers[i].m_variables[j].m_desc, sizeof(r->m_buffers[i].m_variables[j].m_desc));
                     r->m_buffers[i].m_variables[j].m_strings.push_back(p.read_string());
                     r->m_buffers[i].m_variables[j].m_default_value.resize(r->m_buffers[i].m_variables[j].m_desc.Size);
-                    r->m_buffers[i].m_variables[j].m_has_default = p.read_long();
+                    r->m_buffers[i].m_variables[j].m_has_default = p.read_i64();
                     if (r->m_buffers[i].m_variables[j].m_has_default)
                         p.read_raw(r->m_buffers[i].m_variables[j].m_default_value.data(), r->m_buffers[i].m_variables[j].m_desc.Size);
                 }
@@ -135,7 +136,7 @@ struct d3d4linux
             *ppReflector = r;
         }
 
-        int end = p.read_long();
+        int end = p.read_i64();
         if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
@@ -151,14 +152,15 @@ struct d3d4linux
         if (p.error())
             return E_FAIL;
 
-        p.write_long(D3D4LINUX_STRIP);
-        p.write_data(pShaderBytecode, BytecodeLength);
-        p.write_long(uStripFlags);
-        p.write_long(D3D4LINUX_FINISHED);
+        p.write_i64(D3D4LINUX_STRIP);
+        p.write_i64(BytecodeLength);
+        p.write_raw(pShaderBytecode, BytecodeLength);
+        p.write_i64(uStripFlags);
+        p.write_i64(D3D4LINUX_FINISHED);
 
-        HRESULT ret = p.read_long();
+        HRESULT ret = p.read_i64();
         ID3DBlob *strip_blob = p.read_blob();
-        int end = p.read_long();
+        int end = p.read_i64();
         if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
@@ -176,16 +178,17 @@ struct d3d4linux
         if (p.error())
             return E_FAIL;
 
-        p.write_long(D3D4LINUX_DISASSEMBLE);
-        p.write_data(pSrcData, SrcDataSize);
-        p.write_long(Flags);
-        p.write_long(szComments ? 1 : 0);
+        p.write_i64(D3D4LINUX_DISASSEMBLE);
+        p.write_i64(SrcDataSize);
+        p.write_raw(pSrcData, SrcDataSize);
+        p.write_i64(Flags);
+        p.write_i64(szComments ? 1 : 0);
         p.write_string(szComments ? szComments : "");
-        p.write_long(D3D4LINUX_FINISHED);
+        p.write_i64(D3D4LINUX_FINISHED);
 
-        HRESULT ret = p.read_long();
+        HRESULT ret = p.read_i64();
         ID3DBlob *disassembly_blob = p.read_blob();
-        int end = p.read_long();
+        int end = p.read_i64();
         if (end != D3D4LINUX_FINISHED)
             return E_FAIL;
 
@@ -201,12 +204,11 @@ struct d3d4linux
     }
 
 private:
-    struct fork_process
+    struct fork_process : interop
     {
     public:
         fork_process()
-          : m_in(nullptr),
-            m_out(nullptr),
+          : interop(nullptr, nullptr),
             m_pid(-1)
         {
             pipe(m_pipe_read);
@@ -261,63 +263,18 @@ private:
             return m_pid <= 0;
         }
 
-        void write_long(long x)
-        {
-            fprintf(m_out, "%ld%c", x, '\0');
-            if (x == D3D4LINUX_FINISHED)
-                fflush(m_out);
-        }
-
-        void write_string(char const *s)
-        {
-            fprintf(m_out, "%s%c", s, '\0');
-        }
-
-        void write_data(void const *data, size_t len)
-        {
-            fprintf(m_out, "%ld%c", (long)len, '\0');
-            fwrite(data, len, 1, m_out);
-        }
-
-        void write_blob(ID3DBlob *blob)
-        {
-            write_long(blob ? blob->GetBufferSize() : -1);
-            if (blob)
-                fwrite(blob->GetBufferPointer(), blob->GetBufferSize(), 1, stdout);
-        }
-
-        long read_long()
-        {
-            return atol(read_string().c_str());
-        }
-
-        void read_raw(void *ptr, size_t len)
-        {
-            fread(ptr, len, 1, m_in);
-        }
-
-        std::string read_string()
-        {
-            std::string tmp;
-            int ch;
-            while ((ch = fgetc(m_in)) > 0)
-                tmp += ch;
-            return tmp;
-        }
-
         ID3DBlob *read_blob()
         {
-            int len = read_long();
+            int len = read_i64();
             if (len < 0)
                 return nullptr;
 
             ID3DBlob *blob = new ID3DBlob(len);
-            fread(blob->GetBufferPointer(), len, 1, m_in);
+            read_raw(blob->GetBufferPointer(), len);
             return blob;
         }
 
     private:
-        FILE *m_in, *m_out;
         int m_pipe_read[2], m_pipe_write[2];
         pid_t m_pid;
     };

@@ -21,3 +21,68 @@
 
 #define D3D4LINUX_IID_SHADER_REFLECTION 0x42002000
 
+struct interop
+{
+    interop(FILE *in, FILE *out)
+      : m_in(in),
+        m_out(out)
+    {}
+
+    std::string read_string()
+    {
+        std::string tmp;
+        int ch;
+        while ((ch = fgetc(m_in)) > 0)
+            tmp += ch;
+        return tmp;
+    }
+
+    int64_t read_i64()
+    {
+        return atoll(read_string().c_str());
+    }
+
+    void read_raw(void *ptr, size_t len)
+    {
+        fread(ptr, len, 1, m_in);
+    }
+
+    std::vector<uint8_t> *read_data()
+    {
+        size_t len = (size_t)read_i64();
+        if (len < 0)
+            return nullptr;
+        std::vector<uint8_t> *v = new std::vector<uint8_t>();
+        v->resize(len);
+        fread(v->data(), (int)v->size(), 1, m_in);
+        return v;
+    }
+
+    void write_i64(int64_t x)
+    {
+        fprintf(m_out, "%lld%c", (long long int)x, '\0');
+        if (x == D3D4LINUX_FINISHED)
+            fflush(m_out);
+    }
+
+    void write_raw(void const *data, size_t size)
+    {
+        fwrite(data, size, 1, m_out);
+    }
+
+    void write_string(char const *s)
+    {
+        fwrite(s, strlen(s) + 1, 1, m_out);
+    }
+
+    void write_blob(ID3DBlob *blob)
+    {
+        write_i64(blob ? blob->GetBufferSize() : -1);
+        if (blob)
+            fwrite(blob->GetBufferPointer(), blob->GetBufferSize(), 1, m_out);
+    }
+
+protected:
+    FILE *m_in, *m_out;
+};
+
