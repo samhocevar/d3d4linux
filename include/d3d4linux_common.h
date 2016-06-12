@@ -40,14 +40,23 @@ struct interop
         m_out(out)
     {}
 
-    std::string read_string()
+    //
+    // Simple read/write methods for arbitrary data
+    //
+
+    void read_raw(void *ptr, size_t len)
     {
-        std::string tmp;
-        int ch;
-        while ((ch = fgetc(m_in)) > 0)
-            tmp += ch;
-        return tmp;
+        fread(ptr, len, 1, m_in);
     }
+
+    void write_raw(void const *data, size_t size)
+    {
+        fwrite(data, size, 1, m_out);
+    }
+
+    //
+    // Type-specific read/write methods
+    //
 
     int64_t read_i64()
     {
@@ -56,9 +65,13 @@ struct interop
         return ret;
     }
 
-    void read_raw(void *ptr, size_t len)
+    std::string read_string()
     {
-        fread(ptr, len, 1, m_in);
+        std::string ret;
+        size_t len = read_i64();
+        ret.resize(len);
+        read_raw(&ret[0], len);
+        return ret;
     }
 
     std::vector<uint8_t> *read_data()
@@ -68,7 +81,7 @@ struct interop
             return nullptr;
         std::vector<uint8_t> *v = new std::vector<uint8_t>();
         v->resize(len);
-        fread(v->data(), (int)v->size(), 1, m_in);
+        read_raw(v->data(), (int)v->size());
         return v;
     }
 
@@ -79,21 +92,18 @@ struct interop
             fflush(m_out);
     }
 
-    void write_raw(void const *data, size_t size)
-    {
-        fwrite(data, size, 1, m_out);
-    }
-
     void write_string(char const *s)
     {
-        fwrite(s, strlen(s) + 1, 1, m_out);
+        size_t len = strlen(s);
+        write_i64(len);
+        write_raw(s, len);
     }
 
     void write_blob(ID3DBlob *blob)
     {
         write_i64(blob ? blob->GetBufferSize() : -1);
         if (blob)
-            fwrite(blob->GetBufferPointer(), blob->GetBufferSize(), 1, m_out);
+            write_raw(blob->GetBufferPointer(), blob->GetBufferSize());
     }
 
 protected:
