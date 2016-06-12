@@ -106,24 +106,24 @@ int main(int argc, char *argv[])
             for (size_t i = 0; i < shader_desc.InputParameters; ++i)
             {
                 D3D11_SIGNATURE_PARAMETER_DESC param_desc;
-                reflector->GetInputParameterDesc(i, &param_desc);
-                printf("  %d: %s\n", param_desc.SemanticIndex, param_desc.SemanticName);
+                if (SUCCEEDED(reflector->GetInputParameterDesc(i, &param_desc)))
+                    printf("  %d: %s (%d)\n", (int)i, param_desc.SemanticName, param_desc.SemanticIndex);
             }
 
             printf("Output Parameters (%d):\n", shader_desc.OutputParameters);
             for (size_t i = 0; i < shader_desc.OutputParameters; ++i)
             {
                 D3D11_SIGNATURE_PARAMETER_DESC param_desc;
-                reflector->GetOutputParameterDesc(i, &param_desc);
-                printf("  %d: %s\n", param_desc.SemanticIndex, param_desc.SemanticName);
+                if (SUCCEEDED(reflector->GetOutputParameterDesc(i, &param_desc)))
+                    printf("  %d: %s (%d)\n", (int)i, param_desc.SemanticName, param_desc.SemanticIndex);
             }
 
             printf("Bound Resources (%d):\n", shader_desc.BoundResources);
             for (size_t i = 0; i < shader_desc.BoundResources; ++i)
             {
                 D3D11_SHADER_INPUT_BIND_DESC bind_desc;
-                reflector->GetResourceBindingDesc(i, &bind_desc);
-                printf("  %s\n", bind_desc.Name);
+                if (SUCCEEDED(reflector->GetResourceBindingDesc(i, &bind_desc)))
+                    printf("  %d: %s\n", (int)i, bind_desc.Name);
             }
 
             printf("Constant Buffers (%d):\n", shader_desc.ConstantBuffers);
@@ -133,17 +133,19 @@ int main(int argc, char *argv[])
                         = reflector->GetConstantBufferByIndex(i);
 
                 D3D11_SHADER_BUFFER_DESC buffer_desc;
-                cbuffer->GetDesc(&buffer_desc);
-                printf("  %s (%d variables):\n", buffer_desc.Name, buffer_desc.Variables);
-
-                for (uint32_t j = 0; j < buffer_desc.Variables; ++j)
+                if (SUCCEEDED(cbuffer->GetDesc(&buffer_desc)))
                 {
-                    ID3D11ShaderReflectionVariable *var
-                            = cbuffer->GetVariableByIndex(j);
+                    printf("  %d: %s (%d variables):\n", (int)i, buffer_desc.Name, buffer_desc.Variables);
 
-                    D3D11_SHADER_VARIABLE_DESC variable_desc;
-                    var->GetDesc(&variable_desc);
-                    printf("    %s (%d bytes)\n", variable_desc.Name, variable_desc.Size);
+                    for (uint32_t j = 0; j < buffer_desc.Variables; ++j)
+                    {
+                        ID3D11ShaderReflectionVariable *var
+                                = cbuffer->GetVariableByIndex(j);
+
+                        D3D11_SHADER_VARIABLE_DESC variable_desc;
+                        if (SUCCEEDED(var->GetDesc(&variable_desc)))
+                            printf("    %d: %s (%d bytes)\n", (int)j, variable_desc.Name, variable_desc.Size);
+                    }
                 }
             }
         }

@@ -7,7 +7,7 @@ INCLUDE = include/d3d4linux.h \
           include/d3d4linux_impl.h \
           include/d3d4linux_types.h
 
-CXXFLAGS += -Wall -I./include -std=c++11
+CXXFLAGS += -O2 -Wall -I./include -std=c++11
 
 ifeq ($(OS), Windows_NT)
 CXX := x86_64-w64-mingw32-c++
