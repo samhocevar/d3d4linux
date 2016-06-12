@@ -97,39 +97,45 @@ struct d3d4linux
             for (uint32_t i = 0; i < r->m_desc.InputParameters; ++i)
             {
                 r->m_input_params.push_back(D3D11_SIGNATURE_PARAMETER_DESC());
-                p.read_raw(&r->m_input_params[i], sizeof(r->m_input_params[i]));
+                p.read_raw(&r->m_input_params.back(), sizeof(r->m_input_params.back()));
                 r->m_strings.push_back(p.read_string());
             }
 
             for (uint32_t i = 0; i < r->m_desc.OutputParameters; ++i)
             {
                 r->m_output_params.push_back(D3D11_SIGNATURE_PARAMETER_DESC());
-                p.read_raw(&r->m_output_params[i], sizeof(r->m_output_params[i]));
+                p.read_raw(&r->m_output_params.back(), sizeof(r->m_output_params.back()));
                 r->m_strings.push_back(p.read_string());
             }
 
             for (uint32_t i = 0; i < r->m_desc.BoundResources; ++i)
             {
                 r->m_binds.push_back(D3D11_SHADER_INPUT_BIND_DESC());
-                p.read_raw(&r->m_binds[i], sizeof(r->m_binds[i]));
+                p.read_raw(&r->m_binds.back(), sizeof(r->m_binds.back()));
                 r->m_strings.push_back(p.read_string());
             }
 
             for (uint32_t i = 0; i < r->m_desc.ConstantBuffers; ++i)
             {
                 r->m_buffers.push_back(ID3D11ShaderReflectionConstantBuffer());
-                p.read_raw(&r->m_buffers[i].m_desc, sizeof(r->m_buffers[i].m_desc));
-                r->m_buffers[i].m_strings.push_back(p.read_string());
+                ID3D11ShaderReflectionConstantBuffer &buf = r->m_buffers.back();
 
-                for (uint32_t j = 0; j < r->m_buffers[i].m_desc.Variables; ++j)
+                p.read_raw(&buf.m_desc, sizeof(buf.m_desc));
+                buf.m_strings.push_back(p.read_string());
+
+                for (uint32_t j = 0; j < buf.m_desc.Variables; ++j)
                 {
-                    r->m_buffers[i].m_variables.push_back(ID3D11ShaderReflectionVariable());
-                    p.read_raw(&r->m_buffers[i].m_variables[j].m_desc, sizeof(r->m_buffers[i].m_variables[j].m_desc));
-                    r->m_buffers[i].m_variables[j].m_strings.push_back(p.read_string());
-                    r->m_buffers[i].m_variables[j].m_default_value.resize(r->m_buffers[i].m_variables[j].m_desc.Size);
-                    r->m_buffers[i].m_variables[j].m_has_default = p.read_i64();
-                    if (r->m_buffers[i].m_variables[j].m_has_default)
-                        p.read_raw(r->m_buffers[i].m_variables[j].m_default_value.data(), r->m_buffers[i].m_variables[j].m_desc.Size);
+                    buf.m_variables.push_back(ID3D11ShaderReflectionVariable());
+                    ID3D11ShaderReflectionVariable &var = buf.m_variables.back();
+
+                    p.read_raw(&var.m_desc, sizeof(var.m_desc));
+                    var.m_strings.push_back(p.read_string());
+                    var.m_has_default = p.read_i64();
+                    if (var.m_has_default)
+                    {
+                        var.m_default_value.resize(var.m_desc.Size);
+                        p.read_raw(var.m_default_value.data(), var.m_desc.Size);
+                    }
                 }
             }
 
