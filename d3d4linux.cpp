@@ -24,8 +24,7 @@
 int main(void)
 {
     char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
-    if (!verbose_var || *verbose_var != '1')
-        dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
+    int verbose = verbose_var && *verbose_var == '1';
 
     HMODULE lib = LoadLibrary("d3dcompiler_43.dll");
 
@@ -75,9 +74,10 @@ int main(void)
                                   shader_main.c_str(),
                                   shader_type.c_str(),
                                   flags1, flags2, &shader_blob, &error_blob);
-            fprintf(stderr, "[D3D4LINUX] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x ) = 0x%x\n",
-                    (int)shader_source.size(), has_filename ? shader_file.c_str() : "(nullptr)", shader_main.c_str(), shader_type.c_str(),
-                    flags1, flags2, (int)ret);
+            if (verbose)
+                fprintf(stderr, "[D3D4LINUX] D3DCompile([%d bytes], \"%s\", ?, ?, \"%s\", \"%s\", %04x, %04x ) = 0x%x\n",
+                        (int)shader_source.size(), has_filename ? shader_file.c_str() : "(nullptr)", shader_main.c_str(), shader_type.c_str(),
+                        flags1, flags2, (int)ret);
 
             p.write_i64(ret);
             p.write_blob(shader_blob);
@@ -119,8 +119,9 @@ int main(void)
             HRESULT ret = reflect(data ? data->data() : nullptr,
                                   data ? data->size() : 0,
                                   iid, &object);
-            fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s) = 0x%x\n",
-                    data ? (int)data->size() : 0, iid_name, (int)ret);
+            if (verbose)
+                fprintf(stderr, "[D3D4LINUX] D3DReflect([%d bytes], %s) = 0x%x\n",
+                        data ? (int)data->size() : 0, iid_name, (int)ret);
 
             p.write_i64(ret);
 
@@ -213,8 +214,9 @@ int main(void)
             HRESULT ret = strip(data ? data->data() : nullptr,
                                 data ? data->size() : 0,
                                 flags, &strip_blob);
-            fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x) = 0x%x\n",
-                    data ? (int)data->size() : 0, flags, (int)ret);
+            if (verbose)
+                fprintf(stderr, "[D3D4LINUX] D3DStripShader([%d bytes], %04x) = 0x%x\n",
+                        data ? (int)data->size() : 0, flags, (int)ret);
 
             p.write_i64(ret);
             p.write_blob(strip_blob);
@@ -248,8 +250,9 @@ int main(void)
                                 flags,
                                 has_comments ? comments.c_str() : nullptr,
                                 &disas_blob);
-            fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s) = 0x%x\n",
-                    data ? (int)data->size() : 0, flags, has_comments ? "[comments]" : "(nullptr)", (int)ret);
+            if (verbose)
+                fprintf(stderr, "[D3D4LINUX] D3DDisassemble([%d bytes], %04x, %s) = 0x%x\n",
+                        data ? (int)data->size() : 0, flags, has_comments ? "[comments]" : "(nullptr)", (int)ret);
 
             p.write_i64(ret);
             p.write_blob(disas_blob);
@@ -262,7 +265,8 @@ int main(void)
         continue;
 
     error:
-        fprintf(stderr, "[D3D4LINUX] Bad message received: 0x%x 0x%x\n", syscall, marker);
+        if (verbose)
+            fprintf(stderr, "[D3D4LINUX] Bad message received: 0x%x 0x%x\n", syscall, marker);
     }
 
     return EXIT_SUCCESS;
