@@ -217,42 +217,60 @@ private:
           : interop(nullptr, nullptr),
             m_pid(-1)
         {
-            pipe(m_pipe_read);
-            pipe(m_pipe_write);
+            static thread_local pid_t pid = -1;
+            static thread_local int pipe_read[2], pipe_write[2];
+            static thread_local FILE *in, *out;
 
-            m_pid = fork();
-
-            if (m_pid == 0)
+            /* If this is the first run in this thread, then fork a new
+             * child process. */
+            if (pid < 0)
             {
-                dup2(m_pipe_write[0], STDIN_FILENO);
-                dup2(m_pipe_read[1], STDOUT_FILENO);
+                pipe(pipe_read);
+                pipe(pipe_write);
 
-                char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
-                if (!verbose_var || *verbose_var != '1')
-                    dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
+                pid = fork();
 
-                close(m_pipe_read[0]);
-                close(m_pipe_read[1]);
-                close(m_pipe_write[0]);
-                close(m_pipe_write[1]);
+                if (pid == 0)
+                {
+                    dup2(pipe_write[0], STDIN_FILENO);
+                    dup2(pipe_read[1], STDOUT_FILENO);
 
-                static char *const argv[] = { (char *)"wine", (char *)"/home/sam/d3d4linux/d3d4linux.exe", 0 };
-                execv("/usr/bin/wine", argv);
-                /* Never going past here */
+                    char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
+                    if (!verbose_var || *verbose_var != '1')
+                        dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
+
+                    close(pipe_read[0]);
+                    close(pipe_read[1]);
+                    close(pipe_write[0]);
+                    close(pipe_write[1]);
+
+                    static char *const argv[] = { (char *)"wine", (char *)"/home/sam/d3d4linux/d3d4linux.exe", 0 };
+                    execv("/usr/bin/wine", argv);
+                    /* Never going past here */
+                }
+
+                close(pipe_write[0]);
+                close(pipe_read[1]);
+
+                if (pid > 0)
+                {
+                    in = fdopen(pipe_read[0], "r");
+                    out = fdopen(pipe_write[1], "w");
+                }
             }
 
-            close(m_pipe_write[0]);
-            close(m_pipe_read[1]);
-
-            if (m_pid < 0)
-                return;
-
-            m_in = fdopen(m_pipe_read[0], "r");
-            m_out = fdopen(m_pipe_write[1], "w");
+            m_pid = pid;
+            m_pipe_in = pipe_read[0];
+            m_pipe_out = pipe_write[1];
+            m_in = in;
+            m_out = out;
         }
 
         ~fork_process()
         {
+            /* FIXME: we cannot close anything here since the child
+             * process is persistent across calls. */
+#if 0
             if (m_pid > 0)
             {
                 waitpid(m_pid, nullptr, 0);
@@ -260,8 +278,9 @@ private:
                 fclose(m_out);
             }
 
-            close(m_pipe_read[0]);
-            close(m_pipe_write[1]);
+            close(m_pipe_in);
+            close(m_pipe_out);
+#endif
         }
 
         bool error() const
@@ -281,7 +300,7 @@ private:
         }
 
     private:
-        int m_pipe_read[2], m_pipe_write[2];
+        int m_pipe_in, m_pipe_out;
         pid_t m_pid;
     };
 };
