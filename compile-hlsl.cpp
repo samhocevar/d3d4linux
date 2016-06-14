@@ -24,6 +24,19 @@
 #include <cstdio>
 #include <cstdint>
 
+static void dump_bytecode(ID3DBlob *blob)
+{
+    uint8_t *buf = (uint8_t *)blob->GetBufferPointer();
+    int len = blob->GetBufferSize();
+    for (int i = 0; i < len; ++i )
+    {
+        if (i % 80 == 0)
+            printf("%sBytecode: %08x ", i ? "\n" : "", i);
+        putchar((buf[i] >= ' ' && buf[i] < 0x7f) ? buf[i] : '.');
+    }
+    printf("\n");
+}
+
 int main(int argc, char *argv[])
 {
     HRESULT ret = 0;
@@ -73,18 +86,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-        uint8_t *buf = (uint8_t *)shader_blob->GetBufferPointer();
-        int len = shader_blob->GetBufferSize();
-        for (int i = 0; i < len; ++i )
-        {
-            if (buf[i] <= 9)
-                printf("\\%d", buf[i]);
-            else if (buf[i] >= ' ' && buf[i] < 0x7f)
-                printf("%c", buf[i]);
-            else
-                printf("\\x%02x", buf[i]);
-        }
-        printf("\n");
+        if (shader_blob)
+            dump_bytecode(shader_blob);
 
         printf("Calling: D3DReflect\n");
 
@@ -157,6 +160,9 @@ int main(int argc, char *argv[])
                              shader_blob->GetBufferSize(),
                              0,
                              &strip_blob);
+
+        if (strip_blob)
+            dump_bytecode(strip_blob);
 
         printf("Result: 0x%x\n", (int)ret);
 
