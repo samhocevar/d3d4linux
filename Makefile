@@ -1,5 +1,5 @@
 
-BINARIES = compile-hlsl d3d4linux.exe
+BINARIES = d3d4linux.exe test/compile-hlsl
 
 INCLUDE = include/d3d4linux.h \
           include/d3d4linux_common.h \
@@ -21,11 +21,14 @@ all: $(BINARIES)
 d3d4linux.exe: d3d4linux.cpp $(INCLUDE) Makefile
 	x86_64-w64-mingw32-c++ $(CXXFLAGS) $(filter %.cpp, $^) -static -o $@ -ldxguid
 
-compile-hlsl: compile-hlsl.cpp $(INCLUDE) Makefile
+test/compile-hlsl: test/compile-hlsl.cpp $(INCLUDE) Makefile
 	$(CXX) $(CXXFLAGS) $(filter %.cpp, $^) -o $@ $(LDFLAGS)
 
 check: all
-	D3D4LINUX_VERBOSE=1 ./compile-hlsl sample_ps.hlsl ps_main ps_4_0
+	D3D4LINUX_VERBOSE=1 \
+        D3D4LINUX_DLL="$(CURDIR)/d3dcompiler_43.dll" \
+        WINEPREFIX="$(CURDIR)/.wine" \
+          ./test/compile-hlsl test/ps_sample.hlsl ps_main ps_4_0
 
 clean:
 	rm -f $(BINARIES)
