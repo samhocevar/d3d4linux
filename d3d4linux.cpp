@@ -39,7 +39,7 @@ int main(void)
         int syscall = p.read_i64();
         int marker = 0;
 
-        if (syscall == D3D4LINUX_COMPILE)
+        if (syscall == D3D4LINUX_OP_COMPILE)
         {
             HRESULT (*compile)(void const *pSrcData, size_t SrcDataSize,
                                char const *pFileName,
@@ -89,7 +89,7 @@ int main(void)
             if (error_blob)
                 error_blob->Release();
         }
-        else if (syscall == D3D4LINUX_REFLECT)
+        else if (syscall == D3D4LINUX_OP_REFLECT)
         {
             HRESULT (*reflect)(void const *pSrcData,
                                size_t SrcDataSize,
@@ -196,7 +196,7 @@ int main(void)
 
             delete data;
         }
-        else if (syscall == D3D4LINUX_STRIP)
+        else if (syscall == D3D4LINUX_OP_STRIP)
         {
             HRESULT (*strip)(void const *pShaderBytecode,
                              size_t BytecodeLength,
@@ -225,7 +225,7 @@ int main(void)
             if (strip_blob)
                 strip_blob->Release();
         }
-        else if (syscall == D3D4LINUX_DISASSEMBLE)
+        else if (syscall == D3D4LINUX_OP_DISASSEMBLE)
         {
             HRESULT (*disas)(void const *pSrcData,
                              size_t SrcDataSize,

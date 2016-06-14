@@ -48,7 +48,7 @@ struct d3d4linux
             return E_FAIL;
         }
 
-        p.write_i64(D3D4LINUX_COMPILE);
+        p.write_i64(D3D4LINUX_OP_COMPILE);
         p.write_string((char const *)pSrcData);
         p.write_i64(pFileName ? 1 : 0);
         p.write_string(pFileName ? pFileName : "");
@@ -79,7 +79,7 @@ struct d3d4linux
         if (p.error())
             return E_FAIL;
 
-        p.write_i64(D3D4LINUX_REFLECT);
+        p.write_i64(D3D4LINUX_OP_REFLECT);
         p.write_i64(SrcDataSize);
         p.write_raw(pSrcData, SrcDataSize);
         p.write_i64(pInterface);
@@ -158,7 +158,7 @@ struct d3d4linux
         if (p.error())
             return E_FAIL;
 
-        p.write_i64(D3D4LINUX_STRIP);
+        p.write_i64(D3D4LINUX_OP_STRIP);
         p.write_i64(BytecodeLength);
         p.write_raw(pShaderBytecode, BytecodeLength);
         p.write_i64(uStripFlags);
@@ -184,7 +184,7 @@ struct d3d4linux
         if (p.error())
             return E_FAIL;
 
-        p.write_i64(D3D4LINUX_DISASSEMBLE);
+        p.write_i64(D3D4LINUX_OP_DISASSEMBLE);
         p.write_i64(SrcDataSize);
         p.write_raw(pSrcData, SrcDataSize);
         p.write_i64(Flags);
