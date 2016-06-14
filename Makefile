@@ -26,7 +26,9 @@ test/compile-hlsl: test/compile-hlsl.cpp $(INCLUDE) Makefile
 
 check: all
 	D3D4LINUX_VERBOSE=1 \
-        D3D4LINUX_DLL="$(CURDIR)/d3dcompiler_43.dll" \
+        D3D4LINUX_WINE="/usr/bin/wine64" \
+        D3D4LINUX_EXE="$(CURDIR)/d3d4linux.exe" \
+        D3D4LINUX_DLL="z:$(CURDIR)/d3dcompiler_43.dll" \
         WINEPREFIX="$(CURDIR)/.wine" \
           ./test/compile-hlsl test/ps_sample.hlsl ps_main ps_4_0
 

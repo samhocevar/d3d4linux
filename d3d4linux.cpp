@@ -26,7 +26,10 @@ int main(void)
     char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
     int verbose = verbose_var && *verbose_var == '1';
 
-    HMODULE lib = LoadLibrary("d3dcompiler_43.dll");
+    char const *dll_var = getenv("D3D4LINUX_DLL");
+    dll_var = dll_var ? dll_var : "d3dcompiler_43.dll";
+
+    HMODULE lib = LoadLibrary(dll_var);
 
     /* Ensure stdout is in binary mode */
     setmode(fileno(stdout), O_BINARY);

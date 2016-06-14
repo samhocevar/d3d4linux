@@ -20,6 +20,24 @@
 #include <string> /* for std::string */
 
 /*
+ * Default values for some runtime settings
+ */
+
+#if !defined D3D4LINUX_DLL
+    // NOTE: this variable has a Z: prefix because it will be interpreted by
+    // a Windows process run by Wine, so it needs a Windows path.
+#   define D3D4LINUX_DLL "z:/usr/lib/d3d4linux/d3dcompiler_43.dll"
+#endif
+
+#if !defined D3D4LINUX_EXE
+#   define D3D4LINUX_EXE "/usr/lib/d3d4linux/d3d4linux.exe"
+#endif
+
+#if !defined D3D4LINUX_WINE
+#   define D3D4LINUX_WINE "/usr/bin/wine64"
+#endif
+
+/*
  * Types and macros that come from Windows
  */
 

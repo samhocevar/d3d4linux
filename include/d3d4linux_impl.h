@@ -239,13 +239,21 @@ private:
                     if (!verbose_var || *verbose_var != '1')
                         dup2(open("/dev/null", O_WRONLY), STDERR_FILENO);
 
+                    char const *exe_var = getenv("D3D4LINUX_EXE");
+                    if (!exe_var)
+                        exe_var = D3D4LINUX_EXE;
+
+                    char const *wine_var = getenv("D3D4LINUX_WINE");
+                    if (!wine_var)
+                        wine_var = D3D4LINUX_WINE;
+
                     close(pipe_read[0]);
                     close(pipe_read[1]);
                     close(pipe_write[0]);
                     close(pipe_write[1]);
 
-                    static char *const argv[] = { (char *)"wine", (char *)"/home/sam/d3d4linux/d3d4linux.exe", 0 };
-                    execv("/usr/bin/wine", argv);
+                    static char *const argv[] = { (char *)"wine", (char *)exe_var, 0 };
+                    execv(wine_var, argv);
                     /* Never going past here */
                 }
 
