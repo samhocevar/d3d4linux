@@ -6,6 +6,12 @@ the Microsoft DirectX compiler DLL. It works by launching a Windows
 program in the background using [Wine](https://www.winehq.org/) and
 diverting calls to that server on the fly.
 
+**Note: this is not for porting games to Linux. The goal of this project
+is to use Linux machines to build and package Windows games (because
+Linux build machines are cheaper and more reliable). You could see it as
+“shader cross-compilation”. In the end you still get HLSL bytecode which
+is of little use on Linux.**
+
 Only four functions are implemented for now. They are the ones
 required by the Unreal Engine shader compiler:
 
