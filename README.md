@@ -48,7 +48,8 @@ Launch the test:
 
 Patch and build:
 
-  * copy the d3d4linux project to `Engine/Sources/ThirdParty/d3d4linux`.
+  * copy `d3d4linux.Build.cs` and the `include` directory to `Engine/Sources/ThirdParty/d3d4linux`.
+  * copy `d3d4linux.exe` and `d3dcompiler_43.dll` to `Engine/Binaries/ThirdParty/d3d4linux`.
   * apply the patch found in `extras/patch-ue4.11-support.diff` to the Unreal source tree.
   * verify and optionally tweak the `D3D4LINUX_` macros in
     `Engine/Source/Developer/Windows/ShaderFormatD3D/Private/D3D11ShaderCompiler.cpp`
