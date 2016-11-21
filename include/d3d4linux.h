@@ -280,12 +280,12 @@ typedef decltype(&d3d4linux::disassemble) pD3DDisassemble;
 
 static inline HMODULE LoadLibrary(char const *name)
 {
-    return 0;
+    return (HMODULE)1;
 }
 
 static inline HMODULE LoadLibrary(wchar_t const *name)
 {
-    return 0;
+    return (HMODULE)1;
 }
 
 static inline void FreeLibrary(HMODULE handle)
