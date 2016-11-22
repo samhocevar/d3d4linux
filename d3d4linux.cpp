@@ -129,7 +129,7 @@ int main(void)
 
             p.write_i64(ret);
 
-            if (iid_code == D3D4LINUX_IID_SHADER_REFLECTION)
+            if (SUCCEEDED(ret) && iid_code == D3D4LINUX_IID_SHADER_REFLECTION)
             {
                 D3D11_SIGNATURE_PARAMETER_DESC param_desc;
                 D3D11_SHADER_INPUT_BIND_DESC bind_desc;

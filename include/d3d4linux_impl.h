@@ -93,7 +93,7 @@ struct d3d4linux
 
         HRESULT ret = p.read_i64();
 
-        if (pInterface == IID_ID3D11ShaderReflection)
+        if (SUCCEEDED(ret) && pInterface == IID_ID3D11ShaderReflection)
         {
             ID3D11ShaderReflection *r = new ID3D11ShaderReflection;
 
