@@ -18,6 +18,7 @@
 
 #include <vector> /* for std::vector */
 #include <string> /* for std::string */
+#include <wchar.h>
 
 /*
  * Default values for some runtime settings
@@ -26,7 +27,7 @@
 #if !defined D3D4LINUX_DLL
     // NOTE: this variable has a Z: prefix because it will be interpreted by
     // a Windows process run by Wine, so it needs a Windows path.
-#   define D3D4LINUX_DLL "z:/usr/lib/d3d4linux/d3dcompiler_43.dll"
+#   define D3D4LINUX_DLL "z:/usr/lib/d3d4linux/d3dcompiler_47.dll"
 #endif
 
 #if !defined D3D4LINUX_EXE
@@ -280,11 +281,19 @@ typedef decltype(&d3d4linux::disassemble) pD3DDisassemble;
 
 static inline HMODULE LoadLibrary(char const *name)
 {
+    static char const *prefix = "d3dcompiler_";
+    char const *pos = strstr(name, prefix);
+    if (pos)
+        d3d4linux::compiler_version() = atoi(pos + strlen(prefix));
     return (HMODULE)1;
 }
 
 static inline HMODULE LoadLibrary(wchar_t const *name)
 {
+    static wchar_t const *prefix = L"d3dcompiler_";
+    wchar_t const *pos = wcsstr(name, prefix);
+    if (pos)
+        d3d4linux::compiler_version() = wcstol(pos + wcslen(prefix), nullptr, 10);
     return (HMODULE)1;
 }
 

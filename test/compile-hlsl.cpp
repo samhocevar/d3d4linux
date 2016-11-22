@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     ID3DBlob* error_blob = nullptr;
 
     /* This will be a fake call on Linux, we don’t actually load that DLL */
-    HMODULE lib = LoadLibrary("d3dcompiler_43.dll");
+    HMODULE lib = LoadLibrary("d3dcompiler_47.dll");
     pD3DCompile compile = (pD3DCompile)GetProcAddress(lib, "D3DCompile");
 
     printf("Calling: D3DCompile\n");

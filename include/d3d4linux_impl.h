@@ -27,6 +27,12 @@
 
 struct d3d4linux
 {
+    static int &compiler_version()
+    {
+         static int ret = 0;
+         return ret;
+    }
+
     static HRESULT compile(void const *pSrcData,
                            size_t SrcDataSize,
                            char const *pFileName,

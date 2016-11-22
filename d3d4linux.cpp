@@ -27,7 +27,7 @@ int main(void)
     int verbose = verbose_var && *verbose_var == '1';
 
     char const *dll_var = getenv("D3D4LINUX_DLL");
-    dll_var = dll_var ? dll_var : "d3dcompiler_43.dll";
+    dll_var = dll_var ? dll_var : "d3dcompiler_47.dll";
 
     HMODULE lib = LoadLibrary(dll_var);
 
@@ -115,6 +115,7 @@ int main(void)
                 iid_name = "IID_ID3D11ShaderReflection";
                 break;
             default:
+                fprintf(stderr, "[D3D4LINUX] unknown iid_code %d\n", iid_code);
                 goto error;
             }
 
