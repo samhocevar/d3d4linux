@@ -21,6 +21,18 @@
 
 #include <d3d4linux_common.h>
 
+/* Allow multiple definitions of this GUID depending on whether we are using
+ * d3dcompiler_43.dll or d3dcompiler_47.dll. Microsoft states that the GUID
+ * value will change each time the API changes. */
+#define D3D4LINUX_GUID(x, _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k) \
+struct x { uint32_t a; uint16_t b, c; uint8_t d, e, f, g, h, i, j, k; } \
+       x = { _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k };
+
+D3D4LINUX_GUID(IID_ID3D11ShaderReflection_43,
+  0x0a233719, 0x3960, 0x4578, 0x9d, 0x7c, 0x20, 0x3b, 0x8b, 0x1d, 0x9c, 0xc1);
+D3D4LINUX_GUID(IID_ID3D11ShaderReflection_47,
+  0x8d536ca1, 0x0cca, 0x4956, 0xa8, 0x37, 0x78, 0x69, 0x63, 0x75, 0x55, 0x84);
+
 int main(void)
 {
     char const *verbose_var = getenv("D3D4LINUX_VERBOSE");
@@ -111,8 +123,16 @@ int main(void)
             switch (iid_code)
             {
             case D3D4LINUX_IID_SHADER_REFLECTION:
-                iid = IID_ID3D11ShaderReflection;
-                iid_name = "IID_ID3D11ShaderReflection";
+                if (strstr(dll_var, "d3dcompiler_47"))
+                {
+                    memcpy(&iid, &IID_ID3D11ShaderReflection_47, sizeof(iid));
+                    iid_name = "IID_ID3D11ShaderReflection [47]";
+                }
+                else
+                {
+                    memcpy(&iid, &IID_ID3D11ShaderReflection_43, sizeof(iid));
+                    iid_name = "IID_ID3D11ShaderReflection [43]";
+                }
                 break;
             default:
                 fprintf(stderr, "[D3D4LINUX] unknown iid_code %d\n", iid_code);
